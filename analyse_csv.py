@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -30,11 +31,49 @@ class RetrievalCode(Enum):
     CONF4_C4 = "conf4_c4" # Detected conf 4 retrievals in MTG and none in MSG, and reason MSG fails is the BTD2 C4 threshold
     CONF4_C4_CONMASK = "conf4_c4_conmask" # Detected conf 4 retrievals in MTG and none in MSG, and reason MSG fails is the BTD2 C4 threshold and the beta mask
     CONF4_OTHER = "conf4_other" # Detected conf 4 retrievals in MTG and none in MSG, and reason MSG fails is something else
+    CONF3_BTDCUTOFF_BTD3_CONMASK = "conf3_btdcutoff_btd3_conmask"
+    CONF3_BTDCUTOFF_BTD3 = "conf3_btdcutoff_btd3"
+    CONF3_BTDCUTOFF_CONMASK = "conf3_btdcutoff_conmask"
+    CONF3_C3_BTD3_CONMASK = "conf3_c3_btd3_conmask"
+    CONF3_C3_BTD3 = "conf3_c3_btd3"
+    CONF3_C3_CONMASK = "conf3_c3_conmask"
+    CONF3_BTD3_CONMASK = "conf3_btd3_conmask"
+    CONF3_BTD3 = "conf3_btd3"
+    CONF3_CONMASK = "conf3_conmask"
+    CONF3_BTDCUTOFF = "conf3_btdcutoff"
+    CONF3_C3 = "conf3_c3"
+    CONF3_OTHER = "conf3_other"
     NORET = "noret" # No retrievals in either MSG and MTG
     BOTH = "both" # Retrieved ash in both MSG and MTG
     OTHER = "other" # Anything else
 
 codes_to_ignore=[RetrievalCode.NORET, RetrievalCode.BOTH]
+
+retrieval_code_labels = {
+    RetrievalCode.CONF7_LIBMASK: "MTG Conf 7, MSG fails: Liberal Mask",
+    RetrievalCode.CONF7_C1: "MTG Conf 7, MSG fails: C1 Threshold",
+    RetrievalCode.CONF7_C1_LIBMASK: "MTG Conf 7, MSG fails: C1 & Lib Mask",
+    RetrievalCode.CONF7_OTHER: "MTG Conf 7, MSG fails: Other",
+    RetrievalCode.CONF4_CONMASK: "MTG Conf 4, MSG fails: Conservative Mask",
+    RetrievalCode.CONF4_C4: "MTG Conf 4, MSG fails: C4 Threshold",
+    RetrievalCode.CONF4_C4_CONMASK: "MTG Conf 4, MSG fails: C4 & Con Mask",
+    RetrievalCode.CONF4_OTHER: "MTG Conf 4, MSG fails: Other",
+    RetrievalCode.CONF3_BTDCUTOFF_BTD3_CONMASK: "MTG Conf 3, MSG fails: BTDcutoff, BTD3, Con Mask",
+    RetrievalCode.CONF3_BTDCUTOFF_BTD3: "MTG Conf 3, MSG fails: BTDcutoff, BTD3",
+    RetrievalCode.CONF3_BTDCUTOFF_CONMASK: "MTG Conf 3, MSG fails: BTDcutoff, Con Mask",
+    RetrievalCode.CONF3_C3_BTD3_CONMASK: "MTG Conf 3, MSG fails: C3, BTD3, Con Mask",
+    RetrievalCode.CONF3_C3_BTD3: "MTG Conf 3, MSG fails: C3, BTD3",
+    RetrievalCode.CONF3_C3_CONMASK: "MTG Conf 3, MSG fails: C3, Con Mask",
+    RetrievalCode.CONF3_BTD3_CONMASK: "MTG Conf 3, MSG fails: BTD3, Con Mask",
+    RetrievalCode.CONF3_BTD3: "MTG Conf 3, MSG fails: BTD3",
+    RetrievalCode.CONF3_CONMASK: "MTG Conf 3, MSG fails: Con Mask",
+    RetrievalCode.CONF3_BTDCUTOFF: "MTG Conf 3, MSG fails: BTDcutoff",
+    RetrievalCode.CONF3_C3: "MTG Conf 3, MSG fails: C3",
+    RetrievalCode.CONF3_OTHER: "MTG Conf 3, MSG fails: Other",
+    RetrievalCode.NORET: "No Retrieval",
+    RetrievalCode.BOTH: "Both Retrieved",
+    RetrievalCode.OTHER: "Other"
+}
 
 def analyse_csv(indir):
 
@@ -65,7 +104,7 @@ def analyse_csv(indir):
 
     print(f"Comparison written to {output_txt}")
 
-def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_txt=False):
+def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_matches=True, write_output_txt=False):
 
     threshold = 0.01  # degrees
 
@@ -78,92 +117,130 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_tx
     df_master = pd.read_csv(indir+'/'+master_csv_file)
     msg_mtg_pairs = list(zip(df_master['msg_csv'], df_master['mtg_csv']))
 
-    retrievalcodes = []
-    msg_matches = []
-    for file_msg, file_mtg in msg_mtg_pairs:
+    output_csv = outdir + "/{}_msg_matches_nn.csv".format(master_csv_file.rsplit(".csv")[0])
+    if not os.path.exists(output_csv):
+        retrievalcodes = []
+        msg_matches = []
+        for file_msg, file_mtg in msg_mtg_pairs:
 
-        file_path_msg = indir + '/' + file_msg
-        file_path_mtg = indir + '/' + file_mtg
-    
-        # Load the CSV file into a DataFrame
-        df_msg = pd.read_csv(file_path_msg)
-        df_mtg = pd.read_csv(file_path_mtg)
-
-        coords_msg = tuple(zip(np.array(df_msg['Lat']), np.array(df_msg['Lon'])))
-        coords_mtg = tuple(zip(np.array(df_mtg['Lat']), np.array(df_mtg['Lon'])))
-
-        n_msg, n_mtg = len(df_msg), len(df_mtg)
-        build_msg_tree = True if n_msg < n_mtg else False
-        sat_tree, sat_search = ("MSG","MTG") if build_msg_tree else ("MTG","MSG")
-        # Define the df used to build the tree as the smallest one to optimise speed (building the tree is O(n log n))
-        df_tree, df_search = (df_msg, df_mtg) if build_msg_tree else (df_mtg, df_msg)
-        coords_tree = tuple(zip(np.array(df_tree['Lat']), np.array(df_tree['Lon'])))
-        coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
-        search_matches = []
-
-        for coord in coords_search:
-            tree = KDTree(coords_tree)
-            distance, index = tree.query(coord)
-            if distance < threshold:
-                idx_tree = index
-                idx_search = coords_search.index(coord)
-                var_tree = df_tree.iloc[idx_tree]
-                var_search = df_search.iloc[idx_search]
-                # Always append MTG first
-                if build_msg_tree:
-                    search_matches.append((var_search,var_tree))
-                else:
-                    search_matches.append((var_tree,var_search))
-                if write_output_txt:
-                    with open(output_txt, "a") as f:
-                        f.write(f"{'Satellite':<25}{sat_tree:>20}{sat_search:>20}\n")
-                        for col in df_tree.columns:
-                            val_tree = var_tree[col]
-                            val_search = var_search[col] if col in df_search.columns else "N/A"
-                            f.write(f"{col:<25}{str(val_tree):>20}{str(val_search):>20}\n")
-                        f.write("\n")
-
-        for pair in search_matches:
-            mtg_match, msg_match = pair[0], pair[1]
-            msg_matches.append(msg_match)
-            mtg_conf, msg_conf = mtg_match["PreFilter_VA_Confidence"], msg_match["PreFilter_VA_Confidence"]
-            mtg_btd2, msg_btd2 = mtg_match["BTD2_conf"], msg_match["BTD2_conf"]
-            mtg_conmask, msg_conmask = mtg_match["BMCon"], msg_match["BMCon"]
-            mtg_mbask, msg_libmask = mtg_match["BMLib"], msg_match["BMLib"]
-            if mtg_conf == 4 and msg_conf == 0:
-                failc4 = msg_btd2 > msg_match[" c4"]
-                failmask = msg_conmask == 'F'
-                if failc4 and failmask:
-                    retrievalcode = RetrievalCode("conf4_c4_conmask")
-                elif failc4:
-                    retrievalcode = RetrievalCode("conf4_c4")
-                elif failmask:
-                    retrievalcode = RetrievalCode("conf4_conmask")
-                else:
-                    retrievalcode = RetrievalCode("conf4_other")
-            elif mtg_conf == 7 and msg_conf == 0:
-                failc1 = msg_btd2 > msg_match["c1"]
-                failmask = msg_libmask == 'F'
-                if failc1 and failmask:
-                    retrievalcode = RetrievalCode("conf7_c1_libmask")
-                elif failc1:
-                    retrievalcode = RetrievalCode("conf7_c1")
-                elif failmask:
-                    retrievalcode = RetrievalCode("conf7_libmask")
-                else:
-                    retrievalcode = RetrievalCode("conf7_other")
-            elif mtg_conf == 0 and msg_conf == 0:
-                retrievalcode = RetrievalCode("noret")
-            elif mtg_conf > 0 and msg_conf > 0:
-                retrievalcode = RetrievalCode("both")
-            else:
-                retrievalcode = RetrievalCode("other")
-            retrievalcodes.append(retrievalcode)
+            file_path_msg = indir + '/' + file_msg
+            file_path_mtg = indir + '/' + file_mtg
         
-    df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
-    if len(retrievalcodes) != len(df_msg_matches):
-        raise ValueError("Length of retrievalcodes list not equal to list of nearest-neighbour MSG matches")
-    df_msg_matches['retrieval_code'] = pd.Series(retrievalcodes)
+            # Load the CSV file into a DataFrame
+            df_msg = pd.read_csv(file_path_msg)
+            df_mtg = pd.read_csv(file_path_mtg)
+
+            coords_msg = tuple(zip(np.array(df_msg['Lat']), np.array(df_msg['Lon'])))
+            coords_mtg = tuple(zip(np.array(df_mtg['Lat']), np.array(df_mtg['Lon'])))
+
+            n_msg, n_mtg = len(df_msg), len(df_mtg)
+            build_msg_tree = True if n_msg < n_mtg else False
+            sat_tree, sat_search = ("MSG","MTG") if build_msg_tree else ("MTG","MSG")
+            # Define the df used to build the tree as the smallest one to optimise speed (building the tree is O(n log n))
+            df_tree, df_search = (df_msg, df_mtg) if build_msg_tree else (df_mtg, df_msg)
+            coords_tree = tuple(zip(np.array(df_tree['Lat']), np.array(df_tree['Lon'])))
+            coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
+            search_matches = []
+
+            for coord in coords_search:
+                tree = KDTree(coords_tree)
+                distance, index = tree.query(coord)
+                if distance < threshold:
+                    idx_tree = index
+                    idx_search = coords_search.index(coord)
+                    var_tree = df_tree.iloc[idx_tree]
+                    var_search = df_search.iloc[idx_search]
+                    # Always append MTG first
+                    if build_msg_tree:
+                        search_matches.append((var_search,var_tree))
+                    else:
+                        search_matches.append((var_tree,var_search))
+                    if write_output_txt:
+                        with open(output_txt, "a") as f:
+                            f.write(f"{'Satellite':<25}{sat_tree:>20}{sat_search:>20}\n")
+                            for col in df_tree.columns:
+                                val_tree = var_tree[col]
+                                val_search = var_search[col] if col in df_search.columns else "N/A"
+                                f.write(f"{col:<25}{str(val_tree):>20}{str(val_search):>20}\n")
+                            f.write("\n")
+
+            for pair in search_matches:
+                mtg_match, msg_match = pair[0], pair[1]
+                msg_matches.append(msg_match)
+                mtg_conf, msg_conf = mtg_match["PreFilter_VA_Confidence"], msg_match["PreFilter_VA_Confidence"]
+                mtg_btd2, msg_btd2 = mtg_match["BTD2_conf"], msg_match["BTD2_conf"]
+                mtg_btd3, msg_btd3 = mtg_match["VolcanicAsh_BTD3"], msg_match["VolcanicAsh_BTD3"]
+                mtg_conmask, msg_conmask = mtg_match["BMCon"], msg_match["BMCon"]
+                mtg_mbask, msg_libmask = mtg_match["BMLib"], msg_match["BMLib"]
+                if mtg_conf == 4 and msg_conf == 0:
+                    failc4 = msg_btd2 > msg_match[" c4"]
+                    failmask = msg_conmask == 'F'
+                    if failc4 and failmask:
+                        retrievalcode = RetrievalCode("conf4_c4_conmask")
+                    elif failc4:
+                        retrievalcode = RetrievalCode("conf4_c4")
+                    elif failmask:
+                        retrievalcode = RetrievalCode("conf4_conmask")
+                    else:
+                        retrievalcode = RetrievalCode("conf4_other")
+                if mtg_conf == 3 and msg_conf == 0:
+                    failc3 = msg_btd2 <= msg_match[" c3"]
+                    failbtd3 = msg_btd3 > msg_match[" BTD3thresh"]
+                    failbtdcutoff = msg_btd2 > -0.1
+                    failmask = msg_conmask == 'F'
+                    if failbtdcutoff and failbtd3 and failmask:
+                        retrievalcode = RetrievalCode("conf3_btdcutoff_btd3_conmask")
+                    elif failbtdcutoff and failbtd3:
+                        retrievalcode = RetrievalCode("conf3_btdcutoff_btd3")
+                    elif failbtdcutoff and conmask:
+                        retrievalcode = RetrievalCode("conf3_btdcutoff_conmask")
+                    if failc3 and failbtd3 and failmask:
+                        retrievalcode = RetrievalCode("conf3_c3_btd3_conmask")
+                    elif failc3 and failbtd3:
+                        retrievalcode = RetrievalCode("conf3_c3_btd3")
+                    elif failc3 and conmask:
+                        retrievalcode = RetrievalCode("conf3_c3_conmask")
+                    elif failbtd3 and conmask:
+                        retrievalcode = RetrievalCode("conf3_btd3_conmask")
+                    elif failbtd3:
+                        retrievalcode = RetrievalCode("conf3_btd3")
+                    elif failmask:
+                        retrievalcode = RetrievalCode("conf3_conmask")
+                    elif failbtdcutoff:
+                        retrievalcode = RetrievalCode("conf3_btdcutoff")
+                    elif failc3:
+                        retrievalcode = RetrievalCode("conf3_c3")
+                    else:
+                        retrievalcode = RetrievalCode("conf3_other")
+                elif mtg_conf == 7 and msg_conf == 0:
+                    failc1 = msg_btd2 > msg_match["c1"]
+                    failmask = msg_libmask == 'F'
+                    if failc1 and failmask:
+                        retrievalcode = RetrievalCode("conf7_c1_libmask")
+                    elif failc1:
+                        retrievalcode = RetrievalCode("conf7_c1")
+                    elif failmask:
+                        retrievalcode = RetrievalCode("conf7_libmask")
+                    else:
+                        retrievalcode = RetrievalCode("conf7_other")
+                elif mtg_conf == 0 and msg_conf == 0:
+                    retrievalcode = RetrievalCode("noret")
+                elif mtg_conf > 0 and msg_conf > 0:
+                    retrievalcode = RetrievalCode("both")
+                else:
+                    retrievalcode = RetrievalCode("other")
+                retrievalcodes.append(retrievalcode)
+            
+        df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
+        if len(retrievalcodes) != len(df_msg_matches):
+            raise ValueError("Length of retrievalcodes list not equal to list of nearest-neighbour MSG matches")
+        df_msg_matches['retrieval_code'] = pd.Series(retrievalcodes)
+
+        if write_output_matches:
+            df_msg_matches.to_csv(output_csv, index=False)
+            print(f"Nearest-neighbour MSG matches written to {output_csv}")
+    else:
+        df_msg_matches = pd.read_csv(output_csv)
 
     # Get a list of retrieval codes which were identified
     codes = df_msg_matches['retrieval_code'].unique()
@@ -176,13 +253,26 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_tx
         #if code in [RetrievalCode.CONF4_C4, RetrievalCode.CONF4_C4_CONMASK, RetrievalCode.CONF4_CONMASK, RetrievalCode.CONF4_OTHER]:
         #if code in [RetrievalCode.CONF7_C1, RetrievalCode.CONF7_C1_LIBMASK, RetrievalCode.CONF7_LIBMASK, RetrievalCode.CONF7_OTHER]:
         if code not in codes_to_ignore:
-            plt.scatter(code_subset['Lon'], code_subset['Lat'], s=2, label=code, color=colors(i))
+            plt.scatter(
+                code_subset['Lon'], code_subset['Lat'],
+                s=2,
+                label=retrieval_code_labels.get(code, str(code)),
+                color=colors(i),
+                alpha=0.6
+            )
 
     plt.grid(True)
-    plt.legend(title='Retrieval Code')
+    plt.legend(title='Retrieval Code', fontsize='small', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.xlim(lon_range[0], lon_range[1])
     plt.ylim(lat_range[0], lat_range[1])
     ax.coastlines()
+    plt.title("MSG/MTG Retrieval Code Comparison")
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    # Save the plot before showing
+    plot_path = outdir + "/{}_retrieval_codes.png".format(master_csv_file.rsplit(".csv")[0])
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    print(f"Plot saved to {plot_path}")
     plt.show()
 
 def plot_latlon_points(indir, master_csv_file):
