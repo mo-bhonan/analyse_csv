@@ -43,6 +43,12 @@ class RetrievalCode(Enum):
     CONF3_BTDCUTOFF = "conf3_btdcutoff"
     CONF3_C3 = "conf3_c3"
     CONF3_OTHER = "conf3_other"
+    CONF1_C3_LIBMASK = "conf1_c3_libmask"
+    CONF1_C4_LIBMASK = "conf1_c4_libmask"
+    CONF1_C4 = "conf1_c4"
+    CONF1_C3 = "conf1_c3"
+    CONF1_LIBMASK = "conf1_libmask"
+    CONF1_OTHER = "conf1_other"
     NORET = "noret" # No retrievals in either MSG and MTG
     BOTH = "both" # Retrieved ash in both MSG and MTG
     OTHER = "other" # Anything else
@@ -70,6 +76,12 @@ retrieval_code_labels = {
     RetrievalCode.CONF3_BTDCUTOFF: "MTG Conf 3, MSG fails: BTDcutoff",
     RetrievalCode.CONF3_C3: "MTG Conf 3, MSG fails: C3",
     RetrievalCode.CONF3_OTHER: "MTG Conf 3, MSG fails: Other",
+    RetrievalCode.CONF1_C3_LIBMASK : "MTG Conf 1, MSG fails: C3, Liberal Mask",
+    RetrievalCode.CONF1_C4_LIBMASK : "MTG Conf 1, MSG fails: C4, Liberal Mask",
+    RetrievalCode.CONF1_C4 : "MTG Conf 1, MSG fails: C4 Threshold",
+    RetrievalCode.CONF1_C3 : "MTG Conf 1, MSG fails: C3 Threshold",
+    RetrievalCode.CONF1_LIBMASK : "MTG Conf 1, MSG fails: Liberal Mask",
+    RetrievalCode.CONF1_OTHER : "MTG Conf 1, MSG fails: Other",
     RetrievalCode.NORET: "No Retrieval",
     RetrievalCode.BOTH: "Both Retrieved",
     RetrievalCode.OTHER: "Other"
@@ -258,6 +270,22 @@ def get_matches_and_codes(indir, msg_mtg_pairs, write_output_matches, f_output_c
                     retrievalcode = RetrievalCode("conf3_c3")
                 else:
                     retrievalcode = RetrievalCode("conf3_other")
+            elif mtg_conf == 1 and msg_conf == 0:
+                failc4 = msg_btd2 > msg_match[" c4"]
+                failc3 = msg_btd2 <= msg_match[" c3"]
+                faillibmask = msg_libmask == 'F'
+                if failc3 and faillibmask:
+                    retrievalcode = RetrievalCode("conf1_c3_libmask")
+                elif failc4 and faillibmask:
+                    retrievalcode = RetrievalCode("conf1_c4_libmask")
+                elif failc4:
+                    retrievalcode = RetrievalCode("conf1_c4")
+                elif failc3:
+                    retrievalcode = RetrievalCode("conf1_c3")
+                elif faillibmask:
+                    retrievalcode = RetrievalCode("conf1_libmask")
+                else:
+                    retrievalcode = RetrievalCode("conf1_other")
             elif mtg_conf == 7 and msg_conf == 0:
                 failc1 = msg_btd2 > msg_match["c1"]
                 failconmask = msg_libmask == 'F'
@@ -269,7 +297,7 @@ def get_matches_and_codes(indir, msg_mtg_pairs, write_output_matches, f_output_c
                     retrievalcode = RetrievalCode("conf7_libmask")
                 else:
                     retrievalcode = RetrievalCode("conf7_other")
-            elif mtg_conf == 0 and msg_conf == 0:
+            elif mtg_conf == 0: # and msg_conf == 0:
                 retrievalcode = RetrievalCode("noret")
             elif mtg_conf > 0 and msg_conf > 0:
                 retrievalcode = RetrievalCode("both")
@@ -311,8 +339,9 @@ def make_btd_plots(indir, hists_to_plot):
             (df_mtg['Lon'] > lon_min) & (df_mtg['Lon'] < lon_max)
         ]
 
-        # Restrict MSG dataframe to confidence >= 1
+        # Restrict dataframes to confidence >= 1
         df_msg = df_msg[(df_msg['PreFilter_VA_Confidence'] >= 1)]
+        df_mtg = df_mtg[(df_mtg['PreFilter_VA_Confidence'] >= 1)]
 
         mtg_btd2 = df_mtg["BTD2_conf"].values
         msg_btd2 = df_msg["BTD2_conf"].values
@@ -353,6 +382,11 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_ma
     f_output_csv = outdir + "/{}_msg_matches_nn.csv".format(master_csv_file.rsplit(".csv")[0])
     if not os.path.exists(f_output_csv):
         msg_matches, mtg_matches, retrievalcodes = get_matches_and_codes(indir, msg_mtg_pairs, write_output_matches, f_output_csv)
+
+        df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
+        if len(retrievalcodes) != len(df_msg_matches):
+            raise ValueError("Length of retrievalcodes list not equal to list of nearest-neighbour MSG matches")
+        df_msg_matches['retrieval_code'] = pd.Series(retrievalcodes)
         read_from_file=False
     else:
         df_msg_matches = pd.read_csv(f_output_csv)
