@@ -104,7 +104,49 @@ def analyse_csv(indir):
 
     print(f"Comparison written to {output_txt}")
 
-def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_matches=True, write_output_txt=False):
+def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=100, plotc4=False, plotc3=False, plotc1=False, plotBTD3thresh=False, showhist=False, savehist=True, plot_dir='/home/users/benjamin.honan/Work/analyse_csv/plots/', outname="btdhist.png"):
+
+    btds = np.array(btds)
+    if btds.shape[0] == 2:
+        plot_msg_mtg = True 
+    else:
+        plot_msg_mtg = False
+
+    xmin = min(btds.flatten()) if xmin == 0 else xmin
+    xmax = max(btds.flatten()) if xmax == 0 else xmin
+
+    if plot_msg_mtg:
+        plt.hist(btds[0], bins=nbins, range=(xmin, xmax), color='orange', label='MTG', edgecolor='black')
+        plt.hist(btds[1], bins=nbins, range=(xmin, xmax), color='skyblue', label='MSG', edgecolor='black')
+        plt.legend(title="Satellite Type")
+    else:
+        plt.hist(btds, bins=nbins, range=(xmin, xmax), color='skyblue', edgecolor='black')
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+
+    # Plot vertical lines for c1, c3, c4 thresholds (assume -1 for now) with visible labels
+    ylim = plt.gca().get_ylim()
+    if plotc1:
+        plt.axvline(-2.0, color='red', linestyle='--')
+        plt.text(-2.0, ylim[1]*0.95, 'C1 MSG', color='red', rotation=90, va='top', ha='right', backgroundcolor='white')
+        plt.axvline(-2.06, color='blue', linestyle='--')
+        plt.text(-2.06, ylim[1]*0.95, 'C1 MTG', color='blue', rotation=90, va='top', ha='right', backgroundcolor='white')
+    if plotc3:
+        plt.axvline(-1, color='green', linestyle='--')
+        plt.text(-1, ylim[1]*0.85, 'C3', color='green', rotation=90, va='top', ha='right', backgroundcolor='white')
+    if plotc4:
+        plt.axvline(-0.5, color='purple', linestyle='--')
+        plt.text(-0.5, ylim[1]*0.75, 'C4 MSG', color='purple', rotation=90, va='top', ha='right', backgroundcolor='white')
+        plt.axvline(-0.29, color='green', linestyle='--')
+        plt.text(-0.29, ylim[1]*0.75, 'C4 MTG', color='purple', rotation=90, va='top', ha='right', backgroundcolor='white')
+
+    if showhist:
+        plt.show()
+    if savehist:
+        plt.savefig(plot_dir+'/'+outname)
+
+def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_matches=True, write_output_txt=False, plot_hists=True):
 
     threshold = 0.01  # degrees
 
@@ -121,6 +163,7 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_ma
     if not os.path.exists(output_csv):
         retrievalcodes = []
         msg_matches = []
+        mtg_matches = []
         for file_msg, file_mtg in msg_mtg_pairs:
 
             file_path_msg = indir + '/' + file_msg
@@ -167,6 +210,7 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_ma
             for pair in search_matches:
                 mtg_match, msg_match = pair[0], pair[1]
                 msg_matches.append(msg_match)
+                mtg_matches.append(mtg_match)
                 mtg_conf, msg_conf = mtg_match["PreFilter_VA_Confidence"], msg_match["PreFilter_VA_Confidence"]
                 mtg_btd2, msg_btd2 = mtg_match["BTD2_conf"], msg_match["BTD2_conf"]
                 mtg_btd3, msg_btd3 = mtg_match["VolcanicAsh_BTD3"], msg_match["VolcanicAsh_BTD3"]
@@ -174,37 +218,37 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_ma
                 mtg_mbask, msg_libmask = mtg_match["BMLib"], msg_match["BMLib"]
                 if mtg_conf == 4 and msg_conf == 0:
                     failc4 = msg_btd2 > msg_match[" c4"]
-                    failmask = msg_conmask == 'F'
-                    if failc4 and failmask:
+                    failconmask = msg_conmask == 'F'
+                    if failc4 and failconmask:
                         retrievalcode = RetrievalCode("conf4_c4_conmask")
                     elif failc4:
                         retrievalcode = RetrievalCode("conf4_c4")
-                    elif failmask:
+                    elif failconmask:
                         retrievalcode = RetrievalCode("conf4_conmask")
                     else:
                         retrievalcode = RetrievalCode("conf4_other")
-                if mtg_conf == 3 and msg_conf == 0:
+                elif mtg_conf == 3 and msg_conf == 0:
                     failc3 = msg_btd2 <= msg_match[" c3"]
                     failbtd3 = msg_btd3 > msg_match[" BTD3thresh"]
                     failbtdcutoff = msg_btd2 > -0.1
-                    failmask = msg_conmask == 'F'
-                    if failbtdcutoff and failbtd3 and failmask:
+                    failconmask = msg_conmask == 'F'
+                    if failbtdcutoff and failbtd3 and failconmask:
                         retrievalcode = RetrievalCode("conf3_btdcutoff_btd3_conmask")
                     elif failbtdcutoff and failbtd3:
                         retrievalcode = RetrievalCode("conf3_btdcutoff_btd3")
-                    elif failbtdcutoff and conmask:
+                    elif failbtdcutoff and failconmask:
                         retrievalcode = RetrievalCode("conf3_btdcutoff_conmask")
-                    if failc3 and failbtd3 and failmask:
+                    if failc3 and failbtd3 and failconmask:
                         retrievalcode = RetrievalCode("conf3_c3_btd3_conmask")
                     elif failc3 and failbtd3:
                         retrievalcode = RetrievalCode("conf3_c3_btd3")
-                    elif failc3 and conmask:
+                    elif failc3 and failconmask:
                         retrievalcode = RetrievalCode("conf3_c3_conmask")
-                    elif failbtd3 and conmask:
+                    elif failbtd3 and failconmask:
                         retrievalcode = RetrievalCode("conf3_btd3_conmask")
                     elif failbtd3:
                         retrievalcode = RetrievalCode("conf3_btd3")
-                    elif failmask:
+                    elif failconmask:
                         retrievalcode = RetrievalCode("conf3_conmask")
                     elif failbtdcutoff:
                         retrievalcode = RetrievalCode("conf3_btdcutoff")
@@ -214,12 +258,12 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_ma
                         retrievalcode = RetrievalCode("conf3_other")
                 elif mtg_conf == 7 and msg_conf == 0:
                     failc1 = msg_btd2 > msg_match["c1"]
-                    failmask = msg_libmask == 'F'
-                    if failc1 and failmask:
+                    failconmask = msg_libmask == 'F'
+                    if failc1 and failconmask:
                         retrievalcode = RetrievalCode("conf7_c1_libmask")
                     elif failc1:
                         retrievalcode = RetrievalCode("conf7_c1")
-                    elif failmask:
+                    elif failconmask:
                         retrievalcode = RetrievalCode("conf7_libmask")
                     else:
                         retrievalcode = RetrievalCode("conf7_other")
@@ -246,6 +290,54 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_ma
     codes = df_msg_matches['retrieval_code'].unique()
     colors = plt.cm.get_cmap('tab10', len(codes))
 
+    if plot_hists:
+        # Define UK region
+        latlon_uk = (49., 62., -24., 4.)  # lat_min, lat_max, lon_min, lon_max
+
+        df_mtg_matches = pd.DataFrame(mtg_matches).reset_index(drop=True)
+
+        # Filter for UK region
+        df_mtg_uk = df_mtg_matches[
+            (df_mtg_matches['Lat'] > latlon_uk[0]) & (df_mtg_matches['Lat'] < latlon_uk[1]) &
+            (df_mtg_matches['Lon'] > latlon_uk[2]) & (df_mtg_matches['Lon'] < latlon_uk[3])
+        ]
+        df_msg_uk = df_msg_matches[
+            (df_msg_matches['Lat'] > latlon_uk[0]) & (df_msg_matches['Lat'] < latlon_uk[1]) &
+            (df_msg_matches['Lon'] > latlon_uk[2]) & (df_msg_matches['Lon'] < latlon_uk[3])
+        ]
+
+        # Extract BTD2 and BTD3 values for UK region
+        mtg_btd2_uk = df_mtg_uk["BTD2_conf"].values
+        msg_btd2_uk = df_msg_uk["BTD2_conf"].values
+        mtg_btd3_uk = df_mtg_uk["VolcanicAsh_BTD3"].values
+        msg_btd3_uk = df_msg_uk["VolcanicAsh_BTD3"].values
+
+        # Plot BTD2 histogram for UK
+        plt.figure()
+        plot_btd_hist(
+            [mtg_btd2_uk, msg_btd2_uk],
+            xlabel="BTD2",
+            ylabel="Instances",
+            title="UK: BTD2 values for MSG/MTG matches",
+            xmin = -1.,
+            plotc4=True,
+            outname="UK_BTD2_hist.png"
+        )
+        plt.close()
+
+        # Plot BTD3 histogram for UK
+        #plt.figure()
+        #plot_btd_hist(
+        #    [mtg_btd3_uk, msg_btd3_uk],
+        #    xlabel="BTD3",
+        #    ylabel="Instances",
+        #    title="UK: BTD3 values for MSG/MTG matches",
+        #    plotc4=True,
+        #    outname="UK_BTD3_hist.png"
+        #)
+        #plt.close()
+
+    plt.figure()
     ax = plt.axes(projection=ccrs.PlateCarree())
 
     for i, code in enumerate(codes):
@@ -258,17 +350,17 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, write_output_ma
                 s=2,
                 label=retrieval_code_labels.get(code, str(code)),
                 color=colors(i),
-                alpha=0.6
+                alpha=0.8
             )
 
-    plt.grid(True)
-    plt.legend(title='Retrieval Code', fontsize='small', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.legend(title='Retrieval Type', fontsize='small', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.xlim(lon_range[0], lon_range[1])
     plt.ylim(lat_range[0], lat_range[1])
     ax.coastlines()
-    plt.title("MSG/MTG Retrieval Code Comparison")
+    plt.title("MSG/MTG Retrieval Type Comparison")
     plt.xlabel("Longitude")
     plt.ylabel("Latitude")
+    plt.grid(True)
     # Save the plot before showing
     plot_path = outdir + "/{}_retrieval_codes.png".format(master_csv_file.rsplit(".csv")[0])
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
