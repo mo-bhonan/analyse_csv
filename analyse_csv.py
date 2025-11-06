@@ -553,7 +553,7 @@ def plot_latlon_points(indir, outdir, master_csv_file, constraints=None):
                         val = df[val[3:]]
                     mask &= op_func(df[var], val)
                 # Modify original dataframe
-                dfs[idf] = df[mask]
+                dfs[idf].loc[:] = df[mask]
                 perc_passed = (np.array(mask).sum()/len(mask))*100.
                 if idf == 0:
                     passed_str += f"{round(perc_passed,1)}% MTG, "
@@ -572,37 +572,37 @@ def plot_latlon_points(indir, outdir, master_csv_file, constraints=None):
 
         # Assume time string is same for MSG and MTG. TODO: Could add error catching to make sure this is true
         timestr = msgcsv.split("_")[1]
-        ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
         ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
+        ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
         # customer legend element
-        legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
         legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
+        legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
 
-    plt.xlim(lon_range[0], lon_range[1])
-    plt.ylim(lat_range[0], lat_range[1])
+        # Indented from here
+        plt.xlim(lon_range[0], lon_range[1])
+        plt.ylim(lat_range[0], lat_range[1])
 
-    plt.legend(handles=legend_elements, title='Satellite', loc='lower center', ncol=2)
-    values = [val[3:] if 'df_' in val else val for val in constraints['values']]
-    constraintstrs = [f"{var} {op} {val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
-    constraintstr = "; ".join(constraintstrs)
-    plt.title(f'Pixels passing {constraintstr}')
-    if regionstr:
+        plt.legend(handles=legend_elements, title='Satellite', loc='lower center', ncol=2)
+        values = [val[3:] if 'df_' in val else val for val in constraints['values']]
+        constraintstrs = [f"{var} {op} {val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
+        constraintstr = "; ".join(constraintstrs)
+        plt.title(f'Pixels passing {constraintstr}')
         xlim = plt.gca().get_xlim()
         ylim = plt.gca().get_ylim()
         latstr = '('+str(round(lat_min,1))+','+str(round(lat_max,1))+')'
         lonstr = '('+str(round(lon_min,1))+','+str(round(lon_max,1))+')'
-        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9975, "Plot Region: "+regionstr, color='black', va='top', ha='left')
+        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9975, f"Plot Region: {region}", color='black', va='top', ha='left')
         plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9910, f"Lat/Lon: {latstr}/{lonstr}",color='black', va='top', ha='left')
         plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9845, f"Percentage Passed: {passed_str}",color='black', va='top', ha='left')
         plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9780, f"Time: {timestr}",color='black', va='top', ha='left')
-    #outname = f"grid_Median_VA_conf_4_{master_csv_file.split('.csv')[0]}_{str(lon_range[0])}_{str(lon_range[1])}_{str(lat_range[0])}_{str(lat_range[1])}.png"
-    constraintstrs_output = [f"{var}_{op_map_str[op]}_{val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
-    constraintstr_output = "_".join(constraintstrs_output)
-    outname = f"grid_{constraintstr_output}_{regionstr}_{timestr}.png"
-    print(f"Saving fig to {outdir+'/'+outname}")
-    plt.savefig(outdir+'/'+outname)
-    ax.coastlines()
-    plt.show()
+        #outname = f"grid_Median_VA_conf_4_{master_csv_file.split('.csv')[0]}_{str(lon_range[0])}_{str(lon_range[1])}_{str(lat_range[0])}_{str(lat_range[1])}.png"
+        constraintstrs_output = [f"{var}_{op_map_str[op]}_{val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
+        constraintstr_output = "_".join(constraintstrs_output)
+        outname = f"grid_{constraintstr_output}_{region}_{timestr}.png"
+        print(f"Saving fig to {outdir+'/'+outname}")
+        plt.savefig(outdir+'/'+outname)
+        ax.coastlines()
+        plt.show()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Create MSG/MTG retrieval code plots")
@@ -619,9 +619,9 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     if args.plot_points:
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf"], 'operators':['<='], 'values':['df_c4']}, regionstr='UK')
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BMCon"], 'operators':['=='], 'values':['T']}, regionstr='UK')
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':['df_c4','T']}, regionstr='UK')
+        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf"], 'operators':['<='], 'values':['df_c4']})
+        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BMCon"], 'operators':['=='], 'values':['T']})
+        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':['df_c4','T']})
     elif args.plot_btd:
         make_btd_plots(args.indir, ["UK"])
     elif args.plot_beta_masks:
