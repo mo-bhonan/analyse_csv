@@ -4,6 +4,7 @@ import argparse
 import operator
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 import cartopy.crs as ccrs
 from scipy.spatial import KDTree
 from enum import Enum
@@ -517,56 +518,70 @@ def plot_beta_masks(indir, outdir, master_csv_file, *args):
     plt.show()
     print(f"Plot saved as {plotpath}")
 
-def plot_latlon_points(indir, outdir, master_csv_file, constraints='', **kwargs):
+def plot_latlon_points(indir, outdir, master_csv_file, constraints=None):
 
     # constraints should be of the format {'variables':[],'operators':[],'values':[]}, e.g.
     # {'variables':["BTD2_conf", "BMCon"], 'operators':['>=', '=='], 'values':['df_c4','T']}
     # if 'df_x' is given in the values, df['x'] is treated as the value
 
     df_master = pd.read_csv(indir+'/'+master_csv_file)
-    csvfiles = df_master.values.flatten().tolist()
-    csvpaths = [indir+'/'+file for file in csvfiles]
+    #csvfiles = df_master.values.flatten().tolist()
+    #csvpaths = [indir+'/'+file for file in csvfiles]
 
-    #colors = plt.get_cmap('tab10', len(csvpaths))
-    mycolors = ['red', 'blue']
-    regionstr = kwargs['regionstr'] if 'regionstr' in kwargs else ''
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    lon_min = lat_min = 100.
-    lon_max = lat_max = -100.
-    passed_str = ""
-    for icsvpath, csvpath in enumerate(csvpaths):
-        df = pd.read_csv(csvpath)
+    #for icsvpath, csvpath in enumerate(csvpaths):
+    for mtgcsv, msgcsv, region in zip(df_master['mtg_csv'], df_master['msg_csv'], df_master['region']):
+        ax = plt.axes(projection=ccrs.PlateCarree())
+        lon_min = lat_min = 100.
+        lon_max = lat_max = -100.
+        passed_str = ""
+        legend_elements = []
+        mtgpath, msgpath = indir+'/'+mtgcsv, indir+'/'+msgcsv
+        df_mtg = pd.read_csv(mtgpath)
+        df_msg = pd.read_csv(msgpath)
+
+        # Apply the constraints and calculate the percentage passed 
         if constraints:
             if not isinstance(constraints, dict):
                 raise TypeError(f"Expected constraints parameter to be a dictionary. Got {type(constraints)}.")
-            mask = np.ones(len(df), dtype=bool)
-            for var, op_str, val in zip(constraints['variables'], constraints['operators'], constraints['values']):
-                op_func = op_map[op_str]
-                # if 'df_x' is given in the values, df['x'] is treated as the value
-                if isinstance(val, str) and val.startswith('df_'):
-                    val = df[val[3:]]
-                mask &= op_func(df[var], val)
-            df = df[mask]
-            perc_passed = (np.array(mask).sum()/len(mask))*100.
-            if icsvpath != len(csvpaths)-1:
-                passed_str = passed_str + f"{round(perc_passed,1)}% MTG, " if "mtg" in csvpath.lower() else passed_str + f"{round(perc_passed,1)}% MSG, "
-            else:
-                passed_str = passed_str + f"{round(perc_passed,1)}% MTG" if "mtg" in csvpath.lower() else passed_str + f"{round(perc_passed,1)}% MSG"
-            #df = df[(df["Median_VA_Confidence"] == 4)] 
+            dfs = [df_mtg, df_msg]
+            for idf, df in enumerate(dfs):
+                mask = np.ones(len(df), dtype=bool)
+                for var, op_str, val in zip(constraints['variables'], constraints['operators'], constraints['values']):
+                    op_func = op_map[op_str]
+                    # if 'df_x' is given in the values, df['x'] is treated as the value
+                    if isinstance(val, str) and val.startswith('df_'):
+                        val = df[val[3:]]
+                    mask &= op_func(df[var], val)
+                # Modify original dataframe
+                dfs[idf] = df[mask]
+                perc_passed = (np.array(mask).sum()/len(mask))*100.
+                if idf == 0:
+                    passed_str += f"{round(perc_passed,1)}% MTG, "
+                else:
+                    passed_str += f"{round(perc_passed,1)}% MSG"
 
-        lons = np.array(df["Lon"])
-        lon_min = min(lon_min, lons.min())
-        lon_max = max(lon_max, lons.max())
-        lats = np.array(df["Lat"])
-        lat_min = min(lat_min, lats.min())
-        lat_max = max(lat_max, lats.max())
+        lons_msg = np.array(df_msg["Lon"])
+        lats_msg = np.array(df_msg["Lat"])
+        lons_mtg = np.array(df_mtg["Lon"])
+        lats_mtg = np.array(df_mtg["Lat"])
+        # Assume lon/lat min max are same for MSG and MTG. TODO: Could add error catching to make sure this is true
+        lon_min = min(lon_min, lons_msg.min())
+        lon_max = max(lon_max, lons_msg.max())
+        lat_min = min(lat_min, lats_msg.min())
+        lat_max = max(lat_max, lats_msg.max())
 
-        instrument = csvpath.split('/')[-1].split("_")[0]
-        timestr = csvpath.split('/')[-1].split("_")[1]
-        ax.scatter(lons, lats, s=1, alpha=0.5, label=instrument, color=mycolors[icsvpath])
+        # Assume time string is same for MSG and MTG. TODO: Could add error catching to make sure this is true
+        timestr = msgcsv.split("_")[1]
+        ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
+        ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
+        # customer legend element
+        legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
+        legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
+
     plt.xlim(lon_range[0], lon_range[1])
     plt.ylim(lat_range[0], lat_range[1])
-    plt.legend(title='Satellite', loc='lower center', ncol=2)
+
+    plt.legend(handles=legend_elements, title='Satellite', loc='lower center', ncol=2)
     values = [val[3:] if 'df_' in val else val for val in constraints['values']]
     constraintstrs = [f"{var} {op} {val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
     constraintstr = "; ".join(constraintstrs)
@@ -604,7 +619,8 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     if args.plot_points:
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file)
+        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf"], 'operators':['<='], 'values':['df_c4']}, regionstr='UK')
+        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BMCon"], 'operators':['=='], 'values':['T']}, regionstr='UK')
         plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':['df_c4','T']}, regionstr='UK')
     elif args.plot_btd:
         make_btd_plots(args.indir, ["UK"])
