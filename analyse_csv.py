@@ -31,6 +31,15 @@ op_map = {
     '<=': operator.le
 }
 
+op_map_str = {
+    '==': 'eq',
+    '!=': 'ne',
+    '>': 'gt',
+    '<': 'lt',
+    '>=': 'ge',
+    '<=': 'le'
+}
+
 class RetrievalCode(Enum):
     CONF7_LIBMASK = "conf7_libmask" # Detected conf 7 retrievals in MTG and none in MSG, and reason MSG fails is the liberal beta mask
     CONF7_C1 = "conf7_c1" # Detected conf 7 retrievals in MTG and none in MSG, and reason MSG fails is the BTD2 C1 threshold
@@ -566,7 +575,9 @@ def plot_latlon_points(indir, outdir, master_csv_file, constraints='', **kwargs)
                 f"Lat/Lon: {latstr}/{lonstr}",
                 color='black', va='top', ha='left')
     #outname = f"grid_Median_VA_conf_4_{master_csv_file.split('.csv')[0]}_{str(lon_range[0])}_{str(lon_range[1])}_{str(lat_range[0])}_{str(lat_range[1])}.png"
-    outname = "test.png"
+    constraintstrs_output = [f"{var}_{op_map_str[op]}_{val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
+    constraintstr_output = "_".join(constraintstrs_output)
+    outname = f"grid_{constraintstr_output}_{regionstr}_{timestr}.png"
     print(f"Saving fig to {outdir+'/'+outname}")
     plt.savefig(outdir+'/'+outname)
     ax.coastlines()
