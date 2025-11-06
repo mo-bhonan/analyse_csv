@@ -13,8 +13,8 @@ from enum import Enum
 
 #lat_range = (52,53)
 #lon_range = (-14,-13)
-lat_range = (49,57)
-lon_range = (-16,-10)
+lat_range = (49,58)
+lon_range = (-16,-8)
 #lat_range = (45,60)
 #lon_range = (-20,-5)
 #lat_range = (-30,-20)
@@ -533,6 +533,7 @@ def plot_latlon_points(indir, outdir, master_csv_file, constraints='', **kwargs)
     ax = plt.axes(projection=ccrs.PlateCarree())
     lon_min = lat_min = 100.
     lon_max = lat_max = -100.
+    passed_str = ""
     for icsvpath, csvpath in enumerate(csvpaths):
         df = pd.read_csv(csvpath)
         if constraints:
@@ -546,6 +547,11 @@ def plot_latlon_points(indir, outdir, master_csv_file, constraints='', **kwargs)
                     val = df[val[3:]]
                 mask &= op_func(df[var], val)
             df = df[mask]
+            perc_passed = (np.array(mask).sum()/len(mask))*100.
+            if icsvpath != len(csvpaths)-1:
+                passed_str = passed_str + f"{round(perc_passed,1)}% MTG, " if "mtg" in csvpath.lower() else passed_str + f"{round(perc_passed,1)}% MSG, "
+            else:
+                passed_str = passed_str + f"{round(perc_passed,1)}% MTG" if "mtg" in csvpath.lower() else passed_str + f"{round(perc_passed,1)}% MSG"
             #df = df[(df["Median_VA_Confidence"] == 4)] 
 
         lons = np.array(df["Lon"])
@@ -557,10 +563,10 @@ def plot_latlon_points(indir, outdir, master_csv_file, constraints='', **kwargs)
 
         instrument = csvpath.split('/')[-1].split("_")[0]
         timestr = csvpath.split('/')[-1].split("_")[1]
-        ax.scatter(lons, lats, s=1, alpha=0.5, label=instrument + " " + timestr, color=mycolors[icsvpath])
+        ax.scatter(lons, lats, s=1, alpha=0.5, label=instrument, color=mycolors[icsvpath])
     plt.xlim(lon_range[0], lon_range[1])
     plt.ylim(lat_range[0], lat_range[1])
-    plt.legend(title='Satellite and Date')
+    plt.legend(title='Satellite', loc='lower center', ncol=2)
     values = [val[3:] if 'df_' in val else val for val in constraints['values']]
     constraintstrs = [f"{var} {op} {val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
     constraintstr = "; ".join(constraintstrs)
@@ -571,9 +577,9 @@ def plot_latlon_points(indir, outdir, master_csv_file, constraints='', **kwargs)
         latstr = '('+str(round(lat_min,1))+','+str(round(lat_max,1))+')'
         lonstr = '('+str(round(lon_min,1))+','+str(round(lon_max,1))+')'
         plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9975, "Plot Region: "+regionstr, color='black', va='top', ha='left')
-        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.991,
-                f"Lat/Lon: {latstr}/{lonstr}",
-                color='black', va='top', ha='left')
+        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9910, f"Lat/Lon: {latstr}/{lonstr}",color='black', va='top', ha='left')
+        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9845, f"Percentage Passed: {passed_str}",color='black', va='top', ha='left')
+        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9780, f"Time: {timestr}",color='black', va='top', ha='left')
     #outname = f"grid_Median_VA_conf_4_{master_csv_file.split('.csv')[0]}_{str(lon_range[0])}_{str(lon_range[1])}_{str(lat_range[0])}_{str(lat_range[1])}.png"
     constraintstrs_output = [f"{var}_{op_map_str[op]}_{val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
     constraintstr_output = "_".join(constraintstrs_output)
