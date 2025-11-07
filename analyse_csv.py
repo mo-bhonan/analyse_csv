@@ -581,20 +581,29 @@ def plot_latlon_points(indir, outdir, master_csv_file, constraints=None, plotonl
             lons_msg = np.array(df_msg["Lon"])
             lats_msg = np.array(df_msg["Lat"])
             # Assume lon/lat min max are same for MSG and MTG. TODO: Could add error catching to make sure this is true
-            lon_min = min(lon_min, lons_msg.min())
-            lon_max = max(lon_max, lons_msg.max())
-            lat_min = min(lat_min, lats_msg.min())
-            lat_max = max(lat_max, lats_msg.max())
+            #lon_min = min(lon_min, lons_msg.min())
+            #lon_max = max(lon_max, lons_msg.max())
+            #lat_min = min(lat_min, lats_msg.min())
+            #lat_max = max(lat_max, lats_msg.max())
+
+            lon_min = min(lon_min, np.min(lons_msg, initial=100.))
+            lon_max = max(lon_max, np.max(lons_msg, initial=-100.))
+            lat_min = min(lat_min, np.min(lats_msg, initial=100.))
+            lat_max = max(lat_max, np.max(lats_msg, initial=-100.))
 
         if plotmtg:
             lons_mtg = np.array(df_mtg["Lon"])
             lats_mtg = np.array(df_mtg["Lat"])
             # Assume lon/lat min max are same for MSG and MTG. TODO: Could add error catching to make sure this is true
-            if not plotmsg:
-                lon_min = min(lon_min, lons_mtg.min())
-                lon_max = max(lon_max, lons_mtg.max())
-                lat_min = min(lat_min, lats_mtg.min())
-                lat_max = max(lat_max, lats_mtg.max())
+            #lon_min = min(lon_min, lons_mtg.min())
+            #lon_max = max(lon_max, lons_mtg.max())
+            #lat_min = min(lat_min, lats_mtg.min())
+            #lat_max = max(lat_max, lats_mtg.max())
+
+            lon_min = min(lon_min, np.min(lons_mtg, initial=100.))
+            lon_max = max(lon_max, np.max(lons_mtg, initial=-100.))
+            lat_min = min(lat_min, np.min(lats_mtg, initial=100.))
+            lat_max = max(lat_max, np.max(lats_mtg, initial=-100.))
 
         # Assume time string is same for MSG and MTG. TODO: Could add error catching to make sure this is true
         timestr = msgcsv.split("_")[1]
@@ -609,7 +618,7 @@ def plot_latlon_points(indir, outdir, master_csv_file, constraints=None, plotonl
         plt.ylim(lat_range[0], lat_range[1])
 
         plt.legend(handles=legend_elements, title='Satellite', loc='lower center', ncol=2)
-        values = [val[3:] if 'df_' in val else val for val in constraints['values']]
+        values = [str(val)[3:] if 'df_' in str(val) else str(val) for val in constraints['values']]
         constraintstrs = [f"{var} {op} {val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
         constraintstr = "; ".join(constraintstrs)
         satstr = ""
@@ -634,8 +643,8 @@ def plot_latlon_points(indir, outdir, master_csv_file, constraints=None, plotonl
         constraintstr_output = "_".join(constraintstrs_output)
         outname = f"grid_{constraintstr_output}_{region}_{timestr}{satstr}.png"
         print(f"Saving fig to {outdir+'/'+outname}")
-        plt.savefig(outdir+'/'+outname)
         ax.coastlines()
+        plt.savefig(outdir+'/'+outname)
         plt.show()
 
 def parse_args():
@@ -653,11 +662,13 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     if args.plot_points:
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf"], 'operators':['<='], 'values':['df_c4']})
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BMCon"], 'operators':['=='], 'values':['T']})
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':['df_c4','T']})
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':['df_c4','T']}, plotonly='msg')
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':['df_c4','T']}, plotonly='mtg')
+        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf"], 'operators':['<='], 'values':['df_c4']})
+        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BMCon"], 'operators':['=='], 'values':['T']})
+        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':['df_c4','T']})
+        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[4]})
+        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[4]})
+        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':['df_c4','T']}, plotonly='msg')
+        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':['df_c4','T']}, plotonly='mtg')
     elif args.plot_btd:
         make_btd_plots(args.indir, ["UK"])
     elif args.plot_beta_masks:
