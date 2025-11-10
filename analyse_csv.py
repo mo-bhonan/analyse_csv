@@ -135,7 +135,7 @@ def analyse_csv(indir):
 
     print(f"Comparison written to {output_txt}")
 
-def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=False, plotc3=False, plotc1=False, plotBTD3thresh=False, showhist=False, savehist=True, plot_dir='/home/users/benjamin.honan/Work/analyse_csv/plots/', outname="btdhist.png", latlonstr="", regionstr=""):
+def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=False, plotc3=False, plotc1=False, plotBTD3thresh=False, showhist=False, savehist=True, plot_dir='/home/users/benjamin.honan/Work/analyse_csv/plots/', outname="btdhist.png", latlonstr="", regionstr="", timestr=""):
 
     if len(btds) > 1 and len(btds[0]) > 1:
         plot_msg_mtg = True 
@@ -176,10 +176,20 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
     # Plot vertical lines for c1, c3, c4 thresholds (assume -1 for now) with visible labels
     xlim = plt.gca().get_xlim()
     ylim = plt.gca().get_ylim()
-    plt.ylim(ylim[0], ylim[1] * 1.30)  # Increase y-limit by 30% to make space for text
+    plt.ylim(ylim[0], ylim[1] * 1.45)  # Increase y-limit by 45% to make space for text
     ylim = plt.gca().get_ylim()
-    latlonx=0.55
-    regiony=0.86
+    if regionstr:
+        plt.text(
+            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.98,
+            regionstr,
+            ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
+        )
+    if latlonstr:
+        plt.text(
+            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.92,
+            latlonstr,
+            ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
+        )
     if plotc1:
         plt.axvline(-2.0, color='red', linestyle='--')
         plt.text(-2.0, ylim[1]*0.95, 'C1 MSG', color='red', rotation=90, va='top', ha='right', backgroundcolor='white')
@@ -190,52 +200,42 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
         plt.text(-1, ylim[1]*0.85, 'C3', color='green', rotation=90, va='top', ha='right', backgroundcolor='white')
     if plotc4:
         plt.axvline(-0.5, color='purple', linestyle='--')
-        plt.text(-0.5, ylim[1]*0.75, 'C4 MSG', color='purple', rotation=90, va='top', ha='right', backgroundcolor='white')
+        plt.text(-0.5, ylim[1]*0.65, 'C4 MSG', color='purple', rotation=90, va='top', ha='right', backgroundcolor='white')
         plt.axvline(-0.29, color='green', linestyle='--')
-        plt.text(-0.29, ylim[1]*0.75, 'C4 MTG', color='green', rotation=90, va='top', ha='right', backgroundcolor='white')
+        plt.text(-0.29, ylim[1]*0.65, 'C4 MTG', color='green', rotation=90, va='top', ha='right', backgroundcolor='white')
         textstrmtg = f"MTG % below C4: {mtg_perc_below_c4:.1f}%"
         textstrmsg = f"MSG % below C4: {msg_perc_below_c4:.1f}%"
         plt.text(
-            xlim[1] - 0.50*(xlim[1]-xlim[0]), ylim[1]*0.98,
+            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.86,
             textstrmtg,
             ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
         )
         plt.text(
-            xlim[1] - 0.50*(xlim[1]-xlim[0]), ylim[1]*0.92,
+            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.80,
             textstrmsg,
             ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
         )
-        latlonx=0.5
     if plotBTD3thresh:
         plt.axvline(1.5, color='purple', linestyle='--')
-        plt.text(1.5, ylim[1]*0.75, 'BTD3 Thresh', color='purple', rotation=90, va='top', ha='right', backgroundcolor='white')
+        plt.text(1.5, ylim[1]*0.65, 'BTD3 Thresh', color='purple', rotation=90, va='top', ha='right', backgroundcolor='white')
         textstrmtg = f"MTG % above BTD3 Thresh: {mtg_perc_above_btd3:.1f}%"
         textstrmsg = f"MSG % above BTD3 Thresh: {msg_perc_above_btd3:.1f}%"
         plt.text(
-            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.98,
+            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.86,
             textstrmtg,
             ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
         )
         plt.text(
-            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.92,
+            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.80,
             textstrmsg,
             ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
         )
-        latlonx=0.55
-    if latlonstr:
+    if timestr:
         plt.text(
-            xlim[1] - latlonx*(xlim[1]-xlim[0]), ylim[1]*0.86,
-            latlonstr,
+            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.74,
+            timestr,
             ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
         )
-        regiony=0.80
-    if regionstr:
-        plt.text(
-            xlim[1] - latlonx*(xlim[1]-xlim[0]), ylim[1]*regiony,
-            regionstr,
-            ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
-        )
-
 
     if savehist:
         print(f"Saving figure to:{plot_dir+'/'+outname}")
@@ -423,6 +423,7 @@ def make_btd_plots(indir, outdir, master_csv_file):
 
         latstr = '('+str(round(lat_min,1))+','+str(round(lat_max,1))+')'
         lonstr = '('+str(round(lon_min,1))+','+str(round(lon_max,1))+')'
+        timestr = msgcsv.split("_")[1]
 
         # Restrict MTG dataframe to the MSG lon/lat
         df_mtg = df_mtg[
@@ -455,9 +456,10 @@ def make_btd_plots(indir, outdir, master_csv_file):
         title="BTD2 values",
         xmin = -1.,
         plotc4=True,
-        outname=f"{region}_BTD2_hist.png",
+        outname=f"BTD2_{region}_{timestr}.png",
         latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
         regionstr=f"Plot Region: {region}",
+        timestr=f"Time: {timestr}",
         showhist=True
     )
     plt.close()
@@ -471,9 +473,10 @@ def make_btd_plots(indir, outdir, master_csv_file):
         title="UK: BTD3 values for MSG/MTG matches",
         xmin=1.0,
         plotBTD3thresh=True,
-        outname=f"{region}_BTD3_hist.png",
+        outname=f"BTD3_{region}_{timestr}.png",
         latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
         regionstr=f"Plot Region: {region}",
+        timestr=f"Time: {timestr}",
         showhist=True
     )
     plt.close()
