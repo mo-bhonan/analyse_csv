@@ -9,6 +9,7 @@ import cartopy.crs as ccrs
 from scipy.spatial import KDTree
 from enum import Enum
 from collections import Counter
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 #file_msg = "MSG_202510120200_namib_vars.csv"
 #file_mtg = "MTG_202510120200_vars.csv"
@@ -89,12 +90,16 @@ class RetrievalCode(Enum):
     CONF3_BTDCUTOFF_MSGCONF1 = "conf3_btdcutoff_msgconf1"
     CONF3_C3_MSGCONF1 = "conf3_c3_msgconf1"
     CONF3_OTHER_MSGCONF1 = "conf3_other_msgconf1"
-    CONF1_C3_LIBMASK_MSGCONF1 = "conf1_c3_libmask_msgconf1"
-    CONF1_C4_LIBMASK_MSGCONF1 = "conf1_c4_libmask_msgconf1"
-    CONF1_C4_MSGCONF1 = "conf1_c4_msgconf1"
-    CONF1_C3_MSGCONF1 = "conf1_c3_msgconf1"
-    CONF1_LIBMASK_MSGCONF1 = "conf1_libmask_msgconf1"
-    CONF1_OTHER_MSGCONF1 = "conf1_other_msgconf1"
+    CONF1_MSGCONF1 = "conf1_msgconf1"
+    CONF4_MSGCONF4 = "conf4_msgconf4"
+    CONF4_C4_CONMASK_MSGCONF2 = "conf4_c4_conmask_msgconf2"
+    CONF4_C4_MSGCONF2 = "conf4_c4_msgconf2"
+    CONF4_CONMASK_MSGCONF2 = "conf4_conmask_msgconf2"
+    CONF4_OTHER_MSGCONF2 = "conf4_other_msgconf2"
+    CONF1_C4_CONMASK_MSGCONF4 = "conf1_c4_conmask_msgconf4"
+    CONF1_C4_MSGCONF4 = "conf1_c4_msgconf4"
+    CONF1_CONMASK_MSGCONF4 = "conf1_conmask_msgconf4"
+    CONF1_OTHER_MSGCONF4 = "conf1_other_msgconf4"
     NORET = "noret" # No retrievals in either MSG and MTG
     BOTH = "both" # Retrieved ash in both MSG and MTG
     OTHER = "other" # Anything else
@@ -102,32 +107,32 @@ class RetrievalCode(Enum):
 codes_to_ignore=[RetrievalCode.NORET, RetrievalCode.BOTH]
 
 retrieval_code_labels = {
-    RetrievalCode.CONF7_LIBMASK: "MTG Conf 7, MSG conf 0 fails: Liberal Mask",
-    RetrievalCode.CONF7_C1: "MTG Conf 7, MSG conf 0 fails: C1 Threshold",
-    RetrievalCode.CONF7_C1_LIBMASK: "MTG Conf 7, MSG conf 0 fails: C1 & Lib Mask",
-    RetrievalCode.CONF7_OTHER: "MTG Conf 7, MSG conf 0 fails: Other",
-    RetrievalCode.CONF4_CONMASK: "MTG Conf 4, MSG conf 0 fails: Conservative Mask",
-    RetrievalCode.CONF4_C4: "MTG Conf 4, MSG conf 0 fails: C4 Threshold",
-    RetrievalCode.CONF4_C4_CONMASK: "MTG Conf 4, MSG conf 0 fails: C4 & Con Mask",
-    RetrievalCode.CONF4_OTHER: "MTG Conf 4, MSG conf 0 fails: Other",
-    RetrievalCode.CONF3_BTDCUTOFF_BTD3_CONMASK: "MTG Conf 3, MSG conf 0 fails: BTDcutoff, BTD3, Con Mask",
-    RetrievalCode.CONF3_BTDCUTOFF_BTD3: "MTG Conf 3, MSG conf 0 fails: BTDcutoff, BTD3",
-    RetrievalCode.CONF3_BTDCUTOFF_CONMASK: "MTG Conf 3, MSG conf 0 fails: BTDcutoff, Con Mask",
-    RetrievalCode.CONF3_C3_BTD3_CONMASK: "MTG Conf 3, MSG conf 0 fails: C3, BTD3, Con Mask",
-    RetrievalCode.CONF3_C3_BTD3: "MTG Conf 3, MSG conf 0 fails: C3, BTD3",
-    RetrievalCode.CONF3_C3_CONMASK: "MTG Conf 3, MSG conf 0 fails: C3, Con Mask",
-    RetrievalCode.CONF3_BTD3_CONMASK: "MTG Conf 3, MSG conf 0 fails: BTD3, Con Mask",
-    RetrievalCode.CONF3_BTD3: "MTG Conf 3, MSG conf 0 fails: BTD3",
-    RetrievalCode.CONF3_CONMASK: "MTG Conf 3, MSG conf 0 fails: Con Mask",
-    RetrievalCode.CONF3_BTDCUTOFF: "MTG Conf 3, MSG conf 0 fails: BTDcutoff",
-    RetrievalCode.CONF3_C3: "MTG Conf 3, MSG conf 0 fails: C3",
-    RetrievalCode.CONF3_OTHER: "MTG Conf 3, MSG conf 0 fails: Other",
-    RetrievalCode.CONF1_C3_LIBMASK : "MTG Conf 1, MSG conf 0 fails: C3, Liberal Mask",
-    RetrievalCode.CONF1_C4_LIBMASK : "MTG Conf 1, MSG conf 0 fails: C4, Liberal Mask",
-    RetrievalCode.CONF1_C4 : "MTG Conf 1, MSG conf 0 fails: C4 Threshold",
-    RetrievalCode.CONF1_C3 : "MTG Conf 1, MSG conf 0 fails: C3 Threshold",
-    RetrievalCode.CONF1_LIBMASK : "MTG Conf 1, MSG conf 0 fails: Liberal Mask",
-    RetrievalCode.CONF1_OTHER : "MTG Conf 1, MSG conf 0 fails: Other",
+    RetrievalCode.CONF7_LIBMASK: "MTG Conf 7, MSG Conf 0 fails: Liberal Mask",
+    RetrievalCode.CONF7_C1: "MTG Conf 7, MSG Conf 0 fails: C1 Threshold",
+    RetrievalCode.CONF7_C1_LIBMASK: "MTG Conf 7, MSG Conf 0 fails: C1 & Lib Mask",
+    RetrievalCode.CONF7_OTHER: "MTG Conf 7, MSG Conf 0 fails: Other",
+    RetrievalCode.CONF4_CONMASK: "MTG Conf 4, MSG Conf 0 fails: Conservative Mask",
+    RetrievalCode.CONF4_C4: "MTG Conf 4, MSG Conf 0 fails: C4 Threshold",
+    RetrievalCode.CONF4_C4_CONMASK: "MTG Conf 4, MSG Conf 0 fails: C4 & Con Mask",
+    RetrievalCode.CONF4_OTHER: "MTG Conf 4, MSG Conf 0 fails: Other",
+    RetrievalCode.CONF3_BTDCUTOFF_BTD3_CONMASK: "MTG Conf 3, MSG Conf 0 fails: BTDcutoff, BTD3, Con Mask",
+    RetrievalCode.CONF3_BTDCUTOFF_BTD3: "MTG Conf 3, MSG Conf 0 fails: BTDcutoff, BTD3",
+    RetrievalCode.CONF3_BTDCUTOFF_CONMASK: "MTG Conf 3, MSG Conf 0 fails: BTDcutoff, Con Mask",
+    RetrievalCode.CONF3_C3_BTD3_CONMASK: "MTG Conf 3, MSG Conf 0 fails: C3, BTD3, Con Mask",
+    RetrievalCode.CONF3_C3_BTD3: "MTG Conf 3, MSG Conf 0 fails: C3, BTD3",
+    RetrievalCode.CONF3_C3_CONMASK: "MTG Conf 3, MSG Conf 0 fails: C3, Con Mask",
+    RetrievalCode.CONF3_BTD3_CONMASK: "MTG Conf 3, MSG Conf 0 fails: BTD3, Con Mask",
+    RetrievalCode.CONF3_BTD3: "MTG Conf 3, MSG Conf 0 fails: BTD3",
+    RetrievalCode.CONF3_CONMASK: "MTG Conf 3, MSG Conf 0 fails: Con Mask",
+    RetrievalCode.CONF3_BTDCUTOFF: "MTG Conf 3, MSG Conf 0 fails: BTDcutoff",
+    RetrievalCode.CONF3_C3: "MTG Conf 3, MSG Conf 0 fails: C3",
+    RetrievalCode.CONF3_OTHER: "MTG Conf 3, MSG Conf 0 fails: Other",
+    RetrievalCode.CONF1_C3_LIBMASK : "MTG Conf 1, MSG Conf 0 fails: C3, Liberal Mask",
+    RetrievalCode.CONF1_C4_LIBMASK : "MTG Conf 1, MSG Conf 0 fails: C4, Liberal Mask",
+    RetrievalCode.CONF1_C4 : "MTG Conf 1, MSG Conf 0 fails: C4 Threshold",
+    RetrievalCode.CONF1_C3 : "MTG Conf 1, MSG Conf 0 fails: C3 Threshold",
+    RetrievalCode.CONF1_LIBMASK : "MTG Conf 1, MSG Conf 0 fails: Liberal Mask",
+    RetrievalCode.CONF1_OTHER : "MTG Conf 1, MSG Conf 0 fails: Other",
     RetrievalCode.CONF7_LIBMASK_MSGCONF1: "MTG Conf 7, MSG Conf 1 fails: Liberal Mask",
     RetrievalCode.CONF7_C1_MSGCONF1: "MTG Conf 7, MSG Conf 1 fails: C1 Threshold",
     RetrievalCode.CONF7_C1_LIBMASK_MSGCONF1: "MTG Conf 7, MSG Conf 1 fails: C1 & Lib Mask",
@@ -148,12 +153,16 @@ retrieval_code_labels = {
     RetrievalCode.CONF3_BTDCUTOFF_MSGCONF1: "MTG Conf 3, MSG Conf 1 fails: BTDcutoff",
     RetrievalCode.CONF3_C3_MSGCONF1: "MTG Conf 3, MSG Conf 1 fails: C3",
     RetrievalCode.CONF3_OTHER_MSGCONF1: "MTG Conf 3, MSG Conf 1 fails: Other",
-    RetrievalCode.CONF1_C3_LIBMASK_MSGCONF1: "MTG Conf 1, MSG Conf 1 fails: C3, Liberal Mask",
-    RetrievalCode.CONF1_C4_LIBMASK_MSGCONF1: "MTG Conf 1, MSG Conf 1 fails: C4, Liberal Mask",
-    RetrievalCode.CONF1_C4_MSGCONF1: "MTG Conf 1, MSG Conf 1 fails: C4 Threshold",
-    RetrievalCode.CONF1_C3_MSGCONF1: "MTG Conf 1, MSG Conf 1 fails: C3 Threshold",
-    RetrievalCode.CONF1_LIBMASK_MSGCONF1: "MTG Conf 1, MSG Conf 1 fails: Liberal Mask",
-    RetrievalCode.CONF1_OTHER_MSGCONF1: "MTG Conf 1, MSG Conf 1 fails: Other",
+    RetrievalCode.CONF1_MSGCONF1: "MTG Conf 1, MSG Conf 1",
+    RetrievalCode.CONF4_MSGCONF4: "MTG Conf 4, MSG Conf 4",
+    RetrievalCode.CONF4_C4_CONMASK_MSGCONF2: "MTG Conf 4, MSG Conf 2 fails: C4 & Con Mask",
+    RetrievalCode.CONF4_C4_MSGCONF2: "MTG Conf 4, MSG Conf 2 fails: C4 Threshold",
+    RetrievalCode.CONF4_CONMASK_MSGCONF2: "MTG Conf 4, MSG Conf 2 fails: Con Mask",
+    RetrievalCode.CONF4_OTHER_MSGCONF2: "MTG Conf 4, MSG Conf 2 fails: Other",
+    RetrievalCode.CONF1_C4_CONMASK_MSGCONF4: "MSG Conf 4, MTG Conf 1 fails: C4 & Con Mask",
+    RetrievalCode.CONF1_C4_MSGCONF4: "MSG Conf 4, MTG Conf 1 fails: C4 Threshold",
+    RetrievalCode.CONF1_CONMASK_MSGCONF4: "MSG Conf 4, MTG Conf 1 fails: Conservative Mask",
+    RetrievalCode.CONF1_OTHER_MSGCONF4: "MSG Conf 4, MTG Conf 1 fails: Other",
     RetrievalCode.NORET: "No Detection",
     RetrievalCode.BOTH: "Both Retrieved",
     RetrievalCode.OTHER: "Other"
@@ -475,21 +484,7 @@ def get_matches_and_codes(indir, msg_mtg_pairs, write_output_matches, f_output_c
                 else:
                     retrievalcode = RetrievalCode("conf3_other_msgconf1")
             elif mtg_conf == 1 and msg_conf == 1:
-                failc4 = msg_btd2 > msg_match["c4"]
-                failc3 = msg_btd2 <= msg_match["c3"]
-                faillibmask = msg_libmask == 'F'
-                if failc3 and faillibmask:
-                    retrievalcode = RetrievalCode("conf1_c3_libmask_msgconf1")
-                elif failc4 and faillibmask:
-                    retrievalcode = RetrievalCode("conf1_c4_libmask_msgconf1")
-                elif failc4:
-                    retrievalcode = RetrievalCode("conf1_c4_msgconf1")
-                elif failc3:
-                    retrievalcode = RetrievalCode("conf1_c3_msgconf1")
-                elif faillibmask:
-                    retrievalcode = RetrievalCode("conf1_libmask_msgconf1")
-                else:
-                    retrievalcode = RetrievalCode("conf1_other_msgconf1")
+                retrievalcode = RetrievalCode("conf1_msgconf1")
             elif mtg_conf == 7 and msg_conf == 1:
                 failc1 = msg_btd2 > msg_match["c1"]
                 failconmask = msg_libmask == 'F'
@@ -501,11 +496,36 @@ def get_matches_and_codes(indir, msg_mtg_pairs, write_output_matches, f_output_c
                     retrievalcode = RetrievalCode("conf7_libmask_msgconf1")
                 else:
                     retrievalcode = RetrievalCode("conf7_other_msgconf1")
+            elif mtg_conf == 4 and msg_conf == 4:
+                retrievalcode = RetrievalCode("conf4_msgconf4")
+            elif mtg_conf == 4 and msg_conf == 2:
+                failc4 = msg_btd2 > msg_match["c4"]
+                failconmask = msg_conmask == 'F'
+                if failc4 and failconmask:
+                    retrievalcode = RetrievalCode("conf4_c4_conmask_msgconf2")
+                elif failc4:
+                    retrievalcode = RetrievalCode("conf4_c4_msgconf2")
+                elif failconmask:
+                    retrievalcode = RetrievalCode("conf4_conmask_msgconf2")
+                else:
+                    retrievalcode = RetrievalCode("conf4_other_msgconf2")
+            elif msg_conf == 4 and mtg_conf == 1:
+                failc4 = mtg_btd2 > mtg_match["c4"]
+                failconmask = mtg_conmask == 'F'
+                if failc4 and failconmask:
+                    retrievalcode = RetrievalCode("conf1_c4_conmask_msgconf4")
+                elif failc4:
+                    retrievalcode = RetrievalCode("conf1_c4_msgconf4")
+                elif failconmask:
+                    retrievalcode = RetrievalCode("conf1_conmask_msgconf4")
+                else:
+                    retrievalcode = RetrievalCode("conf1_other_msgconf4")
             elif mtg_conf == 0: # and msg_conf == 0:
                 retrievalcode = RetrievalCode("noret")
             #elif mtg_conf > 0 and msg_conf > 0:
             #    retrievalcode = RetrievalCode("both")
             else:
+                import pdb; pdb.set_trace()
                 retrievalcode = RetrievalCode("other")
             retrievalcodes.append(retrievalcode)
         
@@ -657,59 +677,23 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
     ylim = plt.gca().get_ylim()
     plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9975, cut_str, color='black', va='top', ha='left')
 
-    plt.xlabel("Longitude")
-    plt.ylabel("Latitude")
-    plt.grid(True)
+    gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
+    gl.xlines = True   
+    gl.bottom_labels = True
+    gl.left_labels = True
+    gl.xformatter = LONGITUDE_FORMATTER
+    gl.yformatter = LATITUDE_FORMATTER
+    gl.xlabel_style = {'size': 14} 
+    gl.ylabel_style = {'size': 14}    
+
     # Save the plot before showing
     plot_path = outdir + "/{}_detection_codes.png".format(master_csv_file.rsplit(".csv")[0])
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     print(f"Plot saved to {plot_path}")
-    #plt.show()
+    plt.show()
 
     # Convert codes to strings if they are enums
     code_strings = [retrieval_code_labels.get(RetrievalCode(code.split('.')[-1].lower()), str(code)) if read_from_file else retrieval_code_labels.get(code, str(code)) for code in codes.values]
-
-    '''
-    # Count occurrences of each code
-    code_counts = Counter(code_strings)
-
-    # Sort by frequency (descending)
-    sorted_items = sorted(code_counts.items(), key=lambda x: x[1], reverse=True)
-    labels = [item[0] for item in sorted_items]
-    counts = [item[1] for item in sorted_items]
-
-    # Assign integer indices to each label
-    indices = list(range(1, len(labels)+1))
-
-    plt.figure()
-    bars = plt.bar(labels, counts)  # Capture the bar objects
-    plt.xticks(indices)
-
-    plt.bar(labels, counts)
-    plt.xticks(rotation=90)
-    plt.ylabel("Count")
-    plt.title("Detection Code Frequency")
-    plt.tight_layout()
-    ylim = plt.gca().get_ylim()
-    plt.ylim(ylim[0], ylim[1] * 1.30)  # Increase y-limit by 10% to make space for text
-
-    # Annotate each bar with its count value
-    for bar, count in zip(bars, counts):
-        plt.text(
-            bar.get_x() + bar.get_width() / 2,
-            bar.get_height(),
-            str(count),
-            ha='center',
-            va='bottom',
-            fontsize=9
-        )
-
-    # Create legend mapping integers to labels
-    legend_handles = [
-    Patch(label=f"{i}: {label}") for i, label in zip(indices, labels)
-    ]
-    plt.legend(handles=legend_handles, title="Code Index", fontsize='small', bbox_to_anchor=(1.05, 1), loc='upper left')
-    '''
 
     # Count occurrences of each code
     code_counts = Counter(code_strings)
@@ -727,7 +711,8 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
     plt.xticks(indices)  # x-axis ticks are integers
 
     plt.ylabel("Count")
-    plt.title("Detection Code Frequency")
+    plt.xlabel("Detection Type")
+    plt.title("Detection Type Frequency")
     plt.tight_layout()
     ylim = plt.gca().get_ylim()
     plt.ylim(ylim[0], ylim[1] * 1.30)
@@ -748,9 +733,9 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         Patch(facecolor=bar.get_facecolor(), label=f"{i}: {label}")
         for i, label, bar in zip(indices, labels, bars)
     ]
-    plt.legend(handles=legend_handles, title="Code Index", fontsize='small', loc='upper right')
+    plt.legend(handles=legend_handles, title="Detection Type", fontsize='small', loc='upper right')
 
-    plot_path = outdir + "/{}_detection_code_frequencies.png".format(master_csv_file.rsplit(".csv")[0])
+    plot_path = outdir + "/{}_detection_type_frequencies.png".format(master_csv_file.rsplit(".csv")[0])
     print(f"Plot saved to {plot_path}")
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     plt.show()
