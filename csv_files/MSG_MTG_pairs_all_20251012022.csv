@@ -1,0 +1,3 @@
+mtg_csv,msg_csv,region,latlon,plotc1,plotc3,plotc4,conf_cut,plotbeta,
+MTG_202510120200_uk_all_points_vars.csv,MSG_202510120200_uk_all_points_vars.csv,UK,49_58_-16_-8,0,0,1,Med_VA_4,1
+MTG_202510120200_namib_all_points_vars.csv,MSG_202510120200_namib_all_points_vars.csv,Namib Desert,-30_-20_10_20,1,0,0,Med_VA_7,0

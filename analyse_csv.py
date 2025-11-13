@@ -579,41 +579,41 @@ def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, p
         mtg_btd3 = df_mtg["VolcanicAsh_BTD3"].values
         msg_btd3 = df_msg["VolcanicAsh_BTD3"].values
 
-    # Plot BTD2 histogram
-    plt.figure()
-    plot_btd_hist(
-        [mtg_btd2, msg_btd2],
-        xlabel="BTD2",
-        ylabel="Probability Density",
-        title="BTD2 values",
-        xmin = 0,
-        plotc4=plotc4,
-        plotc1=plotc1,
-        plotc3=plotc3,
-        outname=f"BTD2_{region.replace(" ","_")}_{timestr}.png",
-        latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
-        regionstr=f"Plot Region: {region}",
-        timestr=f"Time: {timestr}",
-        showhist=True
-    )
-    plt.close()
+        # Plot BTD2 histogram
+        plt.figure()
+        plot_btd_hist(
+            [mtg_btd2, msg_btd2],
+            xlabel="BTD2",
+            ylabel="Probability Density",
+            title="BTD2 values",
+            xmin = 0,
+            plotc4=plotc4,
+            plotc1=plotc1,
+            plotc3=plotc3,
+            outname=f"BTD2_{region.replace(" ","_")}_{timestr}.png",
+            latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
+            regionstr=f"Plot Region: {region}",
+            timestr=f"Time: {timestr}",
+            showhist=True
+        )
+        plt.close()
 
-    # Plot BTD3 histogram
-    plt.figure()
-    plot_btd_hist(
-        [mtg_btd3, msg_btd3],
-        xlabel="BTD3",
-        ylabel="Probability Density",
-        title="UK: BTD3 values for MSG/MTG matches",
-        xmin=1.0,
-        plotBTD3thresh=True,
-        outname=f"BTD3_{region.replace(" ","_")}_{timestr}.png",
-        latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
-        regionstr=f"Plot Region: {region}",
-        timestr=f"Time: {timestr}",
-        showhist=True
-    )
-    plt.close()
+        # Plot BTD3 histogram
+        plt.figure()
+        plot_btd_hist(
+            [mtg_btd3, msg_btd3],
+            xlabel="BTD3",
+            ylabel="Probability Density",
+            title="UK: BTD3 values for MSG/MTG matches",
+            xmin=1.0,
+            plotBTD3thresh=True,
+            outname=f"BTD3_{region.replace(" ","_")}_{timestr}.png",
+            latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
+            regionstr=f"Plot Region: {region}",
+            timestr=f"Time: {timestr}",
+            showhist=True
+        )
+        plt.close()
 
 def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, write_output_matches=True):
 
@@ -625,7 +625,7 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         lat_range = (float(latlonlist[0]),float(latlonlist[1]))
         lon_range = (float(latlonlist[2]),float(latlonlist[3]))
 
-        f_output_csv = outdir_csv + "/{}_msg_matches_nn.csv".format(master_csv_file.rsplit(".csv")[0])
+        f_output_csv = outdir_csv + f"/{mtgcsv.split('.csv')[0]}_{msgcsv.split('.csv')[0]}_matches_nn.csv"
         cut_str = ""
         timestr = msgcsv.split("_")[1]
         if not os.path.exists(f_output_csv) or recreate_csv:
@@ -791,7 +791,11 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg'):
     y_liberal = aa * x**2 + bb * x + c
 
     df_master = pd.read_csv(indir+'/'+master_csv_file)
-    for mtgcsv, msgcsv, region in zip(df_master['mtg_csv'], df_master['msg_csv'], df_master['region']):
+    for mtgcsv, msgcsv, region, plotbeta in zip(df_master['mtg_csv'], df_master['msg_csv'], df_master['region'], df_master['plotbeta']):
+
+        # Doesn't make sense to plot the beta masks for some cases such as conf-7 not over NH arid regions, as the beta masks are not used for detection
+        if not plotbeta:
+            continue
 
         df_mtg = pd.read_csv(indir + '/' + mtgcsv)
         df_msg = pd.read_csv(indir + '/' + msgcsv)
@@ -1002,6 +1006,7 @@ def parse_args():
     parser.add_argument('--plot_points', action="store_true")
     parser.add_argument('--plot_btd', action="store_true")
     parser.add_argument('--plot_beta_masks', action="store_true")
+    parser.add_argument('--plot_nn', action="store_true")
     parser.add_argument('--recreate_csv', action="store_true")
     return parser.parse_args()
 
@@ -1013,6 +1018,11 @@ if __name__ == "__main__":
         make_btd_plots(args.indir, args.outdir, args.master_csv_file)
     elif args.plot_beta_masks:
         plot_beta_masks(args.indir, args.outdir, args.master_csv_file)
+    elif args.plot_nn:
+        analyse_csv_nearestneighbors(args.indir, args.outdir, args.master_csv_file, args.recreate_csv)
     else:
         analyse_csv_nearestneighbors(args.indir, args.outdir, args.master_csv_file, args.recreate_csv)
+        make_btd_plots(args.indir, args.outdir, args.master_csv_file)
+        plot_latlon_points(args.indir, args.outdir, args.master_csv_file)
+        plot_beta_masks(args.indir, args.outdir, args.master_csv_file)
 
