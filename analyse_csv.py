@@ -321,6 +321,8 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
     if savehist:
         print(f"Saving figure to:{plot_dir+'/'+outname}")
         plt.savefig(plot_dir+'/'+outname)
+        plt.savefig(plot_dir+'/'+outname.replace("png","svg"))
+        plt.savefig(plot_dir+'/'+outname.replace("png","pdf"))
     if showhist:
         plt.show()
 
@@ -552,7 +554,7 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
 
     return (msg_matches, mtg_matches, retrievalcodes, cut_str)
 
-def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, plotc4=False):
+def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, plotc4=False, show_plots=False):
 
     df_master = pd.read_csv(indir+'/'+master_csv_file)
 
@@ -594,7 +596,7 @@ def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, p
             latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
             regionstr=f"Plot Region: {region}",
             timestr=f"Time: {timestr}",
-            showhist=True
+            showhist=show_plots
         )
         plt.close()
 
@@ -611,11 +613,11 @@ def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, p
             latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
             regionstr=f"Plot Region: {region}",
             timestr=f"Time: {timestr}",
-            showhist=True
+            showhist=show_plots
         )
         plt.close()
 
-def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, write_output_matches=True):
+def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, write_output_matches=True, show_plots=False):
 
     outdir_csv = "/home/users/benjamin.honan/Work/analyse_csv/csv_files/matches/"
     df_master = pd.read_csv(indir+'/'+master_csv_file)
@@ -694,8 +696,11 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         outname = f"{region.replace(" ","_")}_{timestr}_detection_type_map.png"
         plot_path = outdir + outname
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        plt.savefig(plot_path.replace("png","svg"), dpi=300, bbox_inches='tight')
+        plt.savefig(plot_path.replace("png","pdf"), dpi=300, bbox_inches='tight')
         print(f"Plot saved to {plot_path}")
-        plt.show()
+        if show_plots:
+            plt.show()
 
         # Convert codes to strings if they are enums
         code_strings = [retrieval_code_labels.get(RetrievalCode(code.split('.')[-1].lower()), str(code)) if read_from_file else retrieval_code_labels.get(code, str(code)) for code in codes.values]
@@ -776,9 +781,12 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         plot_path = outdir + outname
         print(f"Plot saved to {plot_path}")
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        plt.show()
+        plt.savefig(plot_path.replace("png","svg"), bbox_inches='tight')
+        plt.savefig(plot_path.replace("png","pdf"), bbox_inches='tight')
+        if show_plots:
+            plt.show()
 
-def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg'):
+def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plots=False):
     aa = -0.4
     bb = -0.4
     c = 2.5
@@ -881,10 +889,13 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg'):
             outname = f"beta_space_{mode}_{region.replace(" ","_")}_{timestr}.png"
             plotpath = outdir+'/'+outname
             plt.savefig(plotpath)
-            plt.show()
+            plt.savefig(plotpath.replace("png","svg"))
+            plt.savefig(plotpath.replace("png","pdf"))
+            if show_plots:
+                plt.show()
             print(f"Plot saved as {plotpath}")
 
-def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
+def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=False):
 
     # constraints should be of the format {'variables':[],'operators':[],'values':[]}, e.g.
     # {'variables':["BTD2_conf", "BMCon"], 'operators':['>=', '=='], 'values':['df_c4','T']}
@@ -996,7 +1007,10 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
             print(f"Saving fig to {outdir+'/'+outname}")
             ax.coastlines()
             plt.savefig(outdir+'/'+outname)
-            plt.show()
+            plt.savefig(outdir+'/'+outname.replace("png","svg"))
+            plt.savefig(outdir+'/'+outname.replace("png","pdf"))
+            if show_plots:
+                plt.show()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Create MSG/MTG retrieval code plots")
@@ -1008,21 +1022,25 @@ def parse_args():
     parser.add_argument('--plot_beta_masks', action="store_true")
     parser.add_argument('--plot_nn', action="store_true")
     parser.add_argument('--recreate_csv', action="store_true")
+    parser.add_argument('--show_plots', action="store_true")
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_args()
     if args.plot_points:
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file)
+        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, args.show_plots)
     elif args.plot_btd:
-        make_btd_plots(args.indir, args.outdir, args.master_csv_file)
+        make_btd_plots(args.indir, args.outdir, args.master_csv_file, args.show_plots)
     elif args.plot_beta_masks:
-        plot_beta_masks(args.indir, args.outdir, args.master_csv_file)
+        plot_beta_masks(args.indir, args.outdir, args.master_csv_file, args.show_plots)
     elif args.plot_nn:
-        analyse_csv_nearestneighbors(args.indir, args.outdir, args.master_csv_file, args.recreate_csv)
+        analyse_csv_nearestneighbors(args.indir, args.outdir, args.master_csv_file, args.recreate_csv, args.show_plots)
     else:
-        analyse_csv_nearestneighbors(args.indir, args.outdir, args.master_csv_file, args.recreate_csv)
-        make_btd_plots(args.indir, args.outdir, args.master_csv_file)
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file)
-        plot_beta_masks(args.indir, args.outdir, args.master_csv_file)
+        outdir = args.outdir+"/"+args.master_csv_file.replace(".csv","")
+        if not os.path.exists(outdir):
+            os.mkdir(outdir)
+        analyse_csv_nearestneighbors(args.indir, outdir, args.master_csv_file, args.recreate_csv, show_plots=args.show_plots)
+        make_btd_plots(args.indir, outdir, args.master_csv_file, show_plots=args.show_plots)
+        plot_latlon_points(args.indir, outdir, args.master_csv_file, show_plots=args.show_plots)
+        plot_beta_masks(args.indir, outdir, args.master_csv_file, show_plots=args.show_plots)
 
