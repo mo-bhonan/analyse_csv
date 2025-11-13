@@ -852,67 +852,94 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg'):
     y_liberal = aa * x**2 + bb * x + c
 
     df_master = pd.read_csv(indir+'/'+master_csv_file)
+    for mtgcsv, msgcsv, region in zip(df_master['mtg_csv'], df_master['msg_csv'], df_master['region']):
 
-    # Current just plot the first MSG, MTG pair
-    df_mtg = pd.read_csv(indir + '/' + df_master['mtg_csv'][0])
-    df_msg = pd.read_csv(indir + '/' + df_master['msg_csv'][0])
+        df_mtg = pd.read_csv(indir + '/' + mtgcsv)
+        df_msg = pd.read_csv(indir + '/' + msgcsv)
 
-    mtg_beta_870_108, msg_beta_870_108 = df_mtg['Beta_870_108'], df_msg['Beta_870_108']
-    mtg_beta_120_108, msg_beta_120_108 = df_mtg['Beta_120_108'], df_msg['Beta_120_108']
-    plotmodes = plotmode.split("_")
-    for mode in plotmodes:
+        lons_msg = np.array(df_msg["Lon"])
+        lats_msg = np.array(df_msg["Lat"])
 
-        # Create plot
-        plt.figure(figsize=(8, 6))
-        plt.plot(x, y_conservative, 'r--', label='y = aa*x^2 + bb*x + c - 0.4')
-        plt.plot(x, y_liberal, 'b--', label='y = aa*x^2 + bb*x + c')
-        plt.xlabel(r'$\beta$(8.7,10.8)')
-        plt.ylabel(r'$\beta$(12.0,10.8)')
-        plt.grid(True)
-        plt.xlim(0, 2.5)
-        plt.ylim(0, 2.5)
+        lon_min = lons_msg.min()
+        lon_max = lons_msg.max()
+        lat_min = lats_msg.min()
+        lat_max = lats_msg.max()
 
-        # Create a 2D histogram (density map) for MTG and MSG beta values
-        x_bins = np.linspace(0, 2.5, 100)
-        y_bins = np.linspace(0, 2.5, 100)
-        if mode == 'msg':
-            H, xedges, yedges = np.histogram2d(msg_beta_870_108, msg_beta_120_108, bins=[x_bins, y_bins])
-        else:
-            H, xedges, yedges = np.histogram2d(mtg_beta_870_108, mtg_beta_120_108, bins=[x_bins, y_bins])
+        lons_mtg = np.array(df_mtg["Lon"])
+        lats_mtg = np.array(df_mtg["Lat"])
 
-        # Plot density
-        X, Y = np.meshgrid(xedges, yedges)
-        pcm = plt.pcolormesh(X, Y, H.T, cmap='gist_heat_r', shading='auto')
-        # Plot MSG density
-        #pcm_msg = plt.pcolormesh(X1, Y1, H_msg.T, cmap='gist_heat_r', shading='auto')#, alpha=0.999, vmin=0, vmax=H_combined.max())
+        lon_min = min(lon_min, lons_mtg.min())
+        lon_max = max(lon_max, lons_mtg.max())
+        lat_min = min(lat_min, lats_mtg.min())
+        lat_max = max(lat_max, lats_mtg.max())
 
-        # Add colorbar for combined scale
-        #plt.colorbar(pcm_mtg, label='MTG Count', orientation='vertical')
-        plt.colorbar(pcm, label='Count', orientation='vertical')
+        latstr = '('+str(round(lat_min,1))+','+str(round(lat_max,1))+')'
+        lonstr = '('+str(round(lon_min,1))+','+str(round(lon_max,1))+')'
+        latlonstr=f"Lat/Lon: {latstr}/{lonstr}"
+        timestr = msgcsv.split("_")[1]
+        regionstr=f"Plot Region: {region}"
 
-        # Optionally overlay the scatter for reference
-        #plt.scatter(
-        #    mtg_beta_870_108, mtg_beta_120_108, 
-        #    s=3,
-        #    label='MTG',
-        #    color='green',
-        #    alpha=0.3
-        #)
-        #plt.scatter(
-        #    msg_beta_870_108, msg_beta_120_108, 
-        #    s=3,
-        #    label='MSG',
-        #    color='blue',
-        #    alpha=0.3
-        #)
+        mtg_beta_870_108, msg_beta_870_108 = df_mtg['Beta_870_108'], df_msg['Beta_870_108']
+        mtg_beta_120_108, msg_beta_120_108 = df_mtg['Beta_120_108'], df_msg['Beta_120_108']
+        plotmodes = plotmode.split("_")
+        for mode in plotmodes:
 
-        plt.legend()
-        plt.title(r'$\beta$ space '+mode.upper())
-        # Save plot
-        plotpath = outdir+'/'+f"beta_mask_{mode}.png"
-        plt.savefig(plotpath)
-        plt.show()
-        print(f"Plot saved as {plotpath}")
+            # Create plot
+            plt.figure(figsize=(8, 6))
+            plt.plot(x, y_conservative, 'r--', label='Conservative Beta Mask')
+            plt.plot(x, y_liberal, 'b--', label='Liberal Beta Mask')
+            plt.xlabel(r'$\beta$(8.7,10.8)')
+            plt.ylabel(r'$\beta$(12.0,10.8)')
+            plt.grid(True)
+            plt.xlim(0, 2.5)
+            plt.ylim(0, 2.5)
+
+            # Create a 2D histogram (density map) for MTG and MSG beta values
+            x_bins = np.linspace(0, 2.5, 100)
+            y_bins = np.linspace(0, 2.5, 100)
+            if mode == 'msg':
+                xvals = np.array(msg_beta_870_108)
+                yvals = np.array(msg_beta_120_108)
+                H, xedges, yedges = np.histogram2d(xvals, yvals, bins=[x_bins, y_bins])
+            else:
+                xvals = np.array(mtg_beta_870_108)
+                yvals = np.array(mtg_beta_120_108)
+                H, xedges, yedges = np.histogram2d(xvals, yvals, bins=[x_bins, y_bins])
+
+            # Plot density
+            X, Y = np.meshgrid(xedges, yedges)
+            pcm = plt.pcolormesh(X, Y, H.T, cmap='gist_heat_r', shading='auto')
+
+            # Calculate percentage below conservative and liberal lines
+            # For each point, check if y < y_conservative(x) or y < y_liberal(x)
+            def poly_conservative(xv):
+                return aa * xv**2 + bb * xv + c - 0.4
+            def poly_liberal(xv):
+                return aa * xv**2 + bb * xv + c
+
+            below_conservative = np.sum(yvals < poly_conservative(xvals))
+            below_liberal = np.sum(yvals < poly_liberal(xvals))
+            total_points = len(xvals)
+            perc_below_conservative = (below_conservative / total_points) * 100 if total_points > 0 else 0
+            perc_below_liberal = (below_liberal / total_points) * 100 if total_points > 0 else 0
+            passed_str = f"{perc_below_conservative:.1f}% below con., {perc_below_liberal:.1f}% below lib."
+
+            # Add colorbar for combined scale
+            plt.colorbar(pcm, label='Count', orientation='vertical')
+
+            plotstr = f"{regionstr}\n"+f"{latlonstr}\n"+f"{passed_str}\n"+f"Time: {timestr}"
+            xlim = plt.gca().get_xlim()
+            ylim = plt.gca().get_ylim()
+            plt.text(xlim[0] + 0.025*(xlim[1]-xlim[0]), ylim[0]+0.15*(ylim[1]-ylim[0]), plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
+
+            plt.legend()
+            plt.title(r'$\beta$ space '+mode.upper())
+            # Save plot
+            outname = f"beta_space_{mode}_{region}_{timestr}.png"
+            plotpath = outdir+'/'+outname
+            plt.savefig(plotpath)
+            plt.show()
+            print(f"Plot saved as {plotpath}")
 
 def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
 
