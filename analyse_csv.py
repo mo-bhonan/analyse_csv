@@ -839,13 +839,10 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         plt.show()
 
-def plot_beta_masks(indir, outdir, master_csv_file, *args):
+def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg'):
     aa = -0.4
     bb = -0.4
     c = 2.5
-
-    plotmodes = ['mtg','msg','both']
-    plotmode = args[0].lower() if args[0].lower() in plotmodes else ''
 
     # Define x range
     x = np.linspace(0, 2.5, 100)
@@ -853,16 +850,6 @@ def plot_beta_masks(indir, outdir, master_csv_file, *args):
     # Define polynomial function
     y_conservative = aa * x**2 + bb * x + c - 0.4
     y_liberal = aa * x**2 + bb * x + c
-
-    # Create plot
-    plt.figure(figsize=(8, 6))
-    plt.plot(x, y_conservative, 'r--', label='y = aa*x^2 + bb*x + c - 0.4')
-    plt.plot(x, y_liberal, 'b--', label='y = aa*x^2 + bb*x + c')
-    plt.xlabel(r'$\beta$(8.7,10.8)')
-    plt.ylabel(r'$\beta$(12.0,10.8)')
-    plt.grid(True)
-    plt.xlim(0, 2.5)
-    plt.ylim(0, 2.5)
 
     df_master = pd.read_csv(indir+'/'+master_csv_file)
 
@@ -872,32 +859,60 @@ def plot_beta_masks(indir, outdir, master_csv_file, *args):
 
     mtg_beta_870_108, msg_beta_870_108 = df_mtg['Beta_870_108'], df_msg['Beta_870_108']
     mtg_beta_120_108, msg_beta_120_108 = df_mtg['Beta_120_108'], df_msg['Beta_120_108']
+    plotmodes = plotmode.split("_")
+    for mode in plotmodes:
 
-    if plotmode in ['mtg','both']:
-        plt.scatter(
-            mtg_beta_870_108, mtg_beta_120_108, 
-            s=3,
-            label='MTG',
-            color='green',
-            alpha=1.0
-        )
+        # Create plot
+        plt.figure(figsize=(8, 6))
+        plt.plot(x, y_conservative, 'r--', label='y = aa*x^2 + bb*x + c - 0.4')
+        plt.plot(x, y_liberal, 'b--', label='y = aa*x^2 + bb*x + c')
+        plt.xlabel(r'$\beta$(8.7,10.8)')
+        plt.ylabel(r'$\beta$(12.0,10.8)')
+        plt.grid(True)
+        plt.xlim(0, 2.5)
+        plt.ylim(0, 2.5)
 
-    if plotmode in ['msg','both']:
-        plt.scatter(
-            msg_beta_870_108, msg_beta_120_108, 
-            s=3,
-            label='MSG',
-            color='blue',
-            alpha=1.0
-        )
+        # Create a 2D histogram (density map) for MTG and MSG beta values
+        x_bins = np.linspace(0, 2.5, 100)
+        y_bins = np.linspace(0, 2.5, 100)
+        if mode == 'msg':
+            H, xedges, yedges = np.histogram2d(msg_beta_870_108, msg_beta_120_108, bins=[x_bins, y_bins])
+        else:
+            H, xedges, yedges = np.histogram2d(mtg_beta_870_108, mtg_beta_120_108, bins=[x_bins, y_bins])
 
-    plt.legend()
-    plt.title(r'$\beta$ space '+plotmode.upper())
-    # Save plot
-    plotpath = outdir+'/'+f"beta_masks{'_'+plotmode if plotmode else ''}.png"
-    plt.savefig(plotpath)
-    plt.show()
-    print(f"Plot saved as {plotpath}")
+        # Plot density
+        X, Y = np.meshgrid(xedges, yedges)
+        pcm = plt.pcolormesh(X, Y, H.T, cmap='gist_heat_r', shading='auto')
+        # Plot MSG density
+        #pcm_msg = plt.pcolormesh(X1, Y1, H_msg.T, cmap='gist_heat_r', shading='auto')#, alpha=0.999, vmin=0, vmax=H_combined.max())
+
+        # Add colorbar for combined scale
+        #plt.colorbar(pcm_mtg, label='MTG Count', orientation='vertical')
+        plt.colorbar(pcm, label='Count', orientation='vertical')
+
+        # Optionally overlay the scatter for reference
+        #plt.scatter(
+        #    mtg_beta_870_108, mtg_beta_120_108, 
+        #    s=3,
+        #    label='MTG',
+        #    color='green',
+        #    alpha=0.3
+        #)
+        #plt.scatter(
+        #    msg_beta_870_108, msg_beta_120_108, 
+        #    s=3,
+        #    label='MSG',
+        #    color='blue',
+        #    alpha=0.3
+        #)
+
+        plt.legend()
+        plt.title(r'$\beta$ space '+mode.upper())
+        # Save plot
+        plotpath = outdir+'/'+f"beta_mask_{mode}.png"
+        plt.savefig(plotpath)
+        plt.show()
+        print(f"Plot saved as {plotpath}")
 
 def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
 
@@ -1043,7 +1058,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Create MSG/MTG retrieval code plots")
     parser.add_argument('--indir', type=str, default='/home/users/benjamin.honan/Work/analyse_csv/csv_files/')
     parser.add_argument('--outdir', type=str, default='/home/users/benjamin.honan/Work/analyse_csv/plots/')
-    parser.add_argument('--args', type=str, default='')
     parser.add_argument('--master_csv_file', type=str, default='MSG_MTG_pairs.csv')
     parser.add_argument('--plot_points', action="store_true")
     parser.add_argument('--plot_btd', action="store_true")
@@ -1055,25 +1069,10 @@ if __name__ == "__main__":
     args = parse_args()
     if args.plot_points:
         plot_latlon_points(args.indir, args.outdir, args.master_csv_file)
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf"], 'operators':['<='], 'values':[f'df_c{n_c}']})
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[n_con]})
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[n_con]})
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[n_con]})
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMLib"], 'operators':['<=', '=='], 'values':[f'df_c{n_c}','T']}, plotonly='msg')
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMLib"], 'operators':['<=', '=='], 'values':[f'df_c{n_c}','T']}, plotonly='mtg')
-
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BMCon"], 'operators':['=='], 'values':['T']})
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf"], 'operators':['<='], 'values':[f'df_c{n_c}']})
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[n_con]})
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[n_con]})
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':[f'df_c{n_c}','T']})
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':[f'df_c{n_c}','T']}, plotonly='msg')
-        #plot_latlon_points(args.indir, args.outdir, args.master_csv_file, constraints = {'variables':["BTD2_conf", "BMCon"], 'operators':['<=', '=='], 'values':[f'df_c{n_c}','T']}, plotonly='mtg')
     elif args.plot_btd:
-        #make_btd_plots(args.indir, ["UK"])
         make_btd_plots(args.indir, args.outdir, args.master_csv_file)
     elif args.plot_beta_masks:
-        plot_beta_masks(args.indir, args.outdir, args.master_csv_file, args.args)
+        plot_beta_masks(args.indir, args.outdir, args.master_csv_file)
     else:
         analyse_csv_nearestneighbors(args.indir, args.outdir, args.master_csv_file, args.recreate_csv)
 
