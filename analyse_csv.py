@@ -11,20 +11,6 @@ from enum import Enum
 from collections import Counter
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
-#file_msg = "MSG_202510120200_namib_vars.csv"
-#file_mtg = "MTG_202510120200_vars.csv"
-
-#lat_range = (52,53)
-#lon_range = (-14,-13)
-#lat_range = (49,58)
-#lon_range = (-16,-8)
-#lat_range = (45,60)
-#lon_range = (-20,-5)
-#lat_range = (-30,-20)
-#lon_range = (10,20)
-
-#lat_range = (-75,75)
-#lon_range = (-75,75)
 op_map = {
     '==': operator.eq,
     '!=': operator.ne,
@@ -114,10 +100,9 @@ class RetrievalCode(Enum):
     CONF1_OTHER_MSGCONF4 = "conf1_other_msgconf4"
     CONF7_MSGCONF7 = "conf7_msgconf7"
     NORET = "noret" # No retrievals in either MSG and MTG
-    BOTH = "both" # Retrieved ash in both MSG and MTG
     OTHER = "other" # Anything else
 
-codes_to_ignore=[RetrievalCode.NORET, RetrievalCode.BOTH]
+codes_to_ignore=[RetrievalCode.NORET]
 
 retrieval_code_labels = {
     RetrievalCode.CONF7_C1: "MTG Conf 7, MSG Conf 0 fails: C1 Threshold",
@@ -174,7 +159,6 @@ retrieval_code_labels = {
     RetrievalCode.CONF1_CONMASK_MSGCONF4: "MSG Conf 4, MTG Conf 1 fails: Conservative Mask",
     RetrievalCode.CONF1_OTHER_MSGCONF4: "MSG Conf 4, MTG Conf 1 fails: Other",
     RetrievalCode.NORET: "No Detection",
-    RetrievalCode.BOTH: "Both Retrieved",
     RetrievalCode.OTHER: "Other"
 }
 
@@ -240,13 +224,6 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
     plt.hist(btds, bins=nbins, range=(xmin, xmax), density=True, color=colors, label=labels, edgecolor='black')
     plt.legend(title="Satellite Type")
 
-    '''
-        plt.hist(btds[0], bins=nbins, range=(xmin, xmax), density=True, color='orange', label='MTG', edgecolor='black')
-        plt.hist(btds[1], bins=nbins, range=(xmin, xmax), density=True, color='skyblue', label='MSG', edgecolor='black')
-        plt.legend(title="Satellite Type")
-    else:
-        plt.hist(btds, bins=nbins, range=(xmin, xmax), color='skyblue', edgecolor='black')
-    '''
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
@@ -414,7 +391,6 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
         msg_matches.append(msg_match)
         mtg_matches.append(mtg_match)
         mtg_conf, msg_conf = mtg_match["PreFilter_VA_Confidence"], msg_match["PreFilter_VA_Confidence"]
-        #mtg_conf, msg_conf = mtg_match["Median_VA_Confidence"], msg_match["PreFilter_VA_Confidence"]
         mtg_btd2, msg_btd2 = mtg_match["BTD2_conf"], msg_match["BTD2_conf"]
         mtg_btd3, msg_btd3 = mtg_match["VolcanicAsh_BTD3"], msg_match["VolcanicAsh_BTD3"]
         mtg_conmask, msg_conmask = mtg_match["BMCon"], msg_match["BMCon"]
@@ -555,12 +531,9 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
                 retrievalcode = RetrievalCode("conf1_other_msgconf4")
         elif mtg_conf == 7 and msg_conf == 7:
             retrievalcode = RetrievalCode("conf7_msgconf7")
-        elif mtg_conf == 0: # and msg_conf == 0:
+        elif mtg_conf == 0:
             retrievalcode = RetrievalCode("noret")
-        #elif mtg_conf > 0 and msg_conf > 0:
-        #    retrievalcode = RetrievalCode("both")
         else:
-            #import pdb; pdb.set_trace()
             retrievalcode = RetrievalCode("other")
         retrievalcodes.append(retrievalcode)
         
@@ -579,20 +552,8 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
 
     return (msg_matches, mtg_matches, retrievalcodes, cut_str)
 
-#def make_btd_plots(indir, hists_to_plot):
-#def plot_latlon_points(indir, outdir, master_csv_file, constraints=None, plotonly=""):
-'''
-    df_master = pd.read_csv(indir+'/'+master_csv_file)
-    #csvfiles = df_master.values.flatten().tolist()
-    #csvpaths = [indir+'/'+file for file in csvfiles]
-
-    #for icsvpath, csvpath in enumerate(csvpaths):
-    for mtgcsv, msgcsv, region in zip(df_master['mtg_csv'], df_master['msg_csv'], df_master['region']):
-'''
 def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, plotc4=False):
 
-    #hist_path_map = {"UK":('MTG_202510120200_all_points_vars.csv','MSG_202510120200_all_points_vars.csv')}
-    #hist_path_map = {"UK":('../plots/MSG_MTG_pairs_UK_allpoints_msg_matches_nn.csv','../plots/MSG_MTG_pairs_UK_allpoints_msg_matches_nn.csv')}
     df_master = pd.read_csv(indir+'/'+master_csv_file)
 
     for mtgcsv, msgcsv, region, plotc1, plotc3, plotc4 in zip(df_master['mtg_csv'], df_master['msg_csv'], df_master['region'], df_master['plotc1'], df_master['plotc3'], df_master['plotc4']):
@@ -613,21 +574,10 @@ def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, p
             (df_mtg['Lon'] > lon_min) & (df_mtg['Lon'] < lon_max)
         ]
 
-        # Restrict dataframes to confidence >= 1
-        #df_msg = df_msg[(df_msg['prefilter_va_confidence'] >= 1)]
-        #df_mtg = df_mtg[(df_mtg['prefilter_va_confidence'] >= 1)]
-        #df_msg = df_msg[(df_msg['MTG_PreFilter_VA_Confidence'] == 4) & (df_msg['PreFilter_VA_Confidence'] == 0)]
-        #df_mtg = df_mtg[(df_mtg['MTG_PreFilter_VA_Confidence'] == 4) & (df_msg['PreFilter_VA_Confidence'] == 0)]
-
         mtg_btd2 = df_mtg["BTD2_conf"].values
         msg_btd2 = df_msg["BTD2_conf"].values
         mtg_btd3 = df_mtg["VolcanicAsh_BTD3"].values
         msg_btd3 = df_msg["VolcanicAsh_BTD3"].values
-
-        #mtg_btd2 = df_mtg["MTG_BTD2_conf"].values
-        #msg_btd2 = df_msg["BTD2_conf"].values
-        #mtg_btd3 = df_mtg["VolcanicAsh_BTD3"].values
-        #msg_btd3 = df_msg["VolcanicAsh_BTD3"].values
 
     # Plot BTD2 histogram
     plt.figure()
@@ -669,7 +619,6 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
 
     outdir_csv = "/home/users/benjamin.honan/Work/analyse_csv/csv_files/matches/"
     df_master = pd.read_csv(indir+'/'+master_csv_file)
-    #msg_mtg_pairs = list(zip(df_master['msg_csv'], df_master['mtg_csv']))
     for mtgcsv, msgcsv, region, latlon, conf_cut in zip(df_master['mtg_csv'], df_master['msg_csv'], df_master['region'], df_master['latlon'], df_master['conf_cut']):
 
         latlonlist = latlon.split("_")
@@ -743,7 +692,6 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
 
         # Save the plot before showing
         outname = f"{region.replace(" ","_")}_{timestr}_detection_type_map.png"
-        #plot_path = outdir + "/{}_detection_codes.png".format(master_csv_file.rsplit(".csv")[0])
         plot_path = outdir + outname
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         print(f"Plot saved to {plot_path}")
@@ -939,10 +887,7 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
     # if 'df_x' is given in the values, df['x'] is treated as the value
 
     df_master = pd.read_csv(indir+'/'+master_csv_file)
-    #csvfiles = df_master.values.flatten().tolist()
-    #csvpaths = [indir+'/'+file for file in csvfiles]
 
-    #for icsvpath, csvpath in enumerate(csvpaths):
     for mtgcsv, msgcsv, region, latlon, conf_cut in zip(df_master['mtg_csv'], df_master['msg_csv'], df_master['region'], df_master['latlon'], df_master['conf_cut']):
         constraintslist = dict_cut_constraint[conf_cut]
         for constraints in constraintslist:
@@ -960,8 +905,6 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
             lon_range = (float(latlonlist[2]),float(latlonlist[3]))
 
             ax = plt.axes(projection=ccrs.PlateCarree())
-            #lon_min = lat_min = 100.
-            #lon_max = lat_max = -100.
             passed_str = ""
             legend_elements = []
             mtgpath, msgpath = indir+'/'+mtgcsv, indir+'/'+msgcsv
@@ -988,7 +931,6 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
                             val = df[val[3:]]
                         mask &= op_func(df[var], val)
                     # Modify original dataframe
-                    #dflist[idf] = df[mask]
                     if sat == 'MTG':
                         df_mtg = df_mtg[mask]
                     else:
@@ -1002,30 +944,9 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
             if plotmsg:
                 lons_msg = np.array(df_msg["Lon"])
                 lats_msg = np.array(df_msg["Lat"])
-            #    # Assume lon/lat min max are same for MSG and MTG. TODO: Could add error catching to make sure this is true
-            #    #lon_min = min(lon_min, lons_msg.min())
-            #    #lon_max = max(lon_max, lons_msg.max())
-            #    #lat_min = min(lat_min, lats_msg.min())
-            #    #lat_max = max(lat_max, lats_msg.max())
-            #
-            #    lon_min = min(lon_min, np.min(lons_msg, initial=100.))
-            #    lon_max = max(lon_max, np.max(lons_msg, initial=-100.))
-            #    lat_min = min(lat_min, np.min(lats_msg, initial=100.))
-            #    lat_max = max(lat_max, np.max(lats_msg, initial=-100.))
-            #
             if plotmtg:
                 lons_mtg = np.array(df_mtg["Lon"])
                 lats_mtg = np.array(df_mtg["Lat"])
-            #    # Assume lon/lat min max are same for MSG and MTG. TODO: Could add error catching to make sure this is true
-            #    #lon_min = min(lon_min, lons_mtg.min())
-            #    #lon_max = max(lon_max, lons_mtg.max())
-            #    #lat_min = min(lat_min, lats_mtg.min())
-            #    #lat_max = max(lat_max, lats_mtg.max())
-            #
-            #    lon_min = min(lon_min, np.min(lons_mtg, initial=100.))
-            #    lon_max = max(lon_max, np.max(lons_mtg, initial=-100.))
-            #    lat_min = min(lat_min, np.min(lats_mtg, initial=100.))
-            #    lat_max = max(lat_max, np.max(lats_mtg, initial=-100.))
 
             gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
             gl.xlines = True   
@@ -1063,18 +984,8 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
             plt.title(f'Pixels passing {constraintstr}')
             xlim = plt.gca().get_xlim()
             ylim = plt.gca().get_ylim()
-            #latstr = '('+str(round(lat_min,1))+','+str(round(lat_max,1))+')'
-            #lonstr = '('+str(round(lon_min,1))+','+str(round(lon_max,1))+')'
-            #plotstr = f"Plot Region: {region}\n"+f"Lat/Lon: {latstr}/{lonstr}\n"+f"Percentage Passed: {passed_str}\n"+f"Time: {timestr}"
             plotstr = f"Plot Region: {region}\n"+f"Percentage Passed: {passed_str}\n"+f"Time: {timestr}"
             plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - 0.025*(ylim[1]-ylim[0]), plotstr, color='black', va='top', ha='left', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
-            #plt.text(xlim[0] + 0.025*(xlim[1]-xlim[0]), ylim[0]+0.15*(ylim[1]-ylim[0]), plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
-            '''
-            plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9910, f"Lat/Lon: {latstr}/{lonstr}",color='black', va='top', ha='left')
-            plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9845, f"Percentage Passed: {passed_str}",color='black', va='top', ha='left')
-            plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9780, f"Time: {timestr}",color='black', va='top', ha='left')
-            '''
-            #outname = f"grid_Median_VA_conf_4_{master_csv_file.split('.csv')[0]}_{str(lon_range[0])}_{str(lon_range[1])}_{str(lat_range[0])}_{str(lat_range[1])}.png"
             constraintstrs_output = [f"{var}_{op_map_str[op]}_{val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
             constraintstr_output = "_".join(constraintstrs_output)
             outname = f"grid_{constraintstr_output}_{region.replace(" ","_")}_{timestr}{satstr}.png"
