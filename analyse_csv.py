@@ -60,9 +60,7 @@ dict_cut_constraint = {
 }
 
 class RetrievalCode(Enum):
-    CONF7_LIBMASK = "conf7_libmask" # Detected conf 7 retrievals in MTG and none in MSG, and reason MSG fails is the liberal beta mask
     CONF7_C1 = "conf7_c1" # Detected conf 7 retrievals in MTG and none in MSG, and reason MSG fails is the BTD2 C1 threshold
-    CONF7_C1_LIBMASK = "conf7_c1_libmask" # Detected conf 7 retrievals in MTG and none in MSG, and reason MSG fails is the BTD2 C1 threshold and the beta mask
     CONF7_OTHER = "conf7_other" # Detected conf 7 retrievals in MTG and none in MSG, and reason MSG fails is something else
     CONF4_CONMASK = "conf4_conmask" # Detected conf 4 retrievals in MTG and none in MSG, and reason MSG fails is the conservative beta mask
     CONF4_C4 = "conf4_c4" # Detected conf 4 retrievals in MTG and none in MSG, and reason MSG fails is the BTD2 C4 threshold
@@ -86,9 +84,7 @@ class RetrievalCode(Enum):
     CONF1_C3 = "conf1_c3"
     CONF1_LIBMASK = "conf1_libmask"
     CONF1_OTHER = "conf1_other"
-    CONF7_LIBMASK_MSGCONF1 = "conf7_libmask_msgconf1" # Detected conf 7 retrievals in MTG and none in MSG, and reason MSG fails is the liberal beta mask
     CONF7_C1_MSGCONF1 = "conf7_c1_msgconf1" # Detected conf 7 retrievals in MTG and none in MSG, and reason MSG fails is the BTD2 C1 threshold
-    CONF7_C1_LIBMASK_MSGCONF1 = "conf7_c1_libmask_msgconf1" # Detected conf 7 retrievals in MTG and none in MSG, and reason MSG fails is the BTD2 C1 threshold and the beta mask
     CONF7_OTHER_MSGCONF1 = "conf7_other_msgconf1" # Detected conf 7 retrievals in MTG and none in MSG, and reason MSG fails is something else
     CONF4_CONMASK_MSGCONF1 = "conf4_conmask_msgconf1" # Detected conf 4 retrievals in MTG and none in MSG, and reason MSG fails is the conservative beta mask
     CONF4_C4_MSGCONF1 = "conf4_c4_msgconf1" # Detected conf 4 retrievals in MTG and none in MSG, and reason MSG fails is the BTD2 C4 threshold
@@ -116,6 +112,7 @@ class RetrievalCode(Enum):
     CONF1_C4_MSGCONF4 = "conf1_c4_msgconf4"
     CONF1_CONMASK_MSGCONF4 = "conf1_conmask_msgconf4"
     CONF1_OTHER_MSGCONF4 = "conf1_other_msgconf4"
+    CONF7_MSGCONF7 = "conf7_msgconf7"
     NORET = "noret" # No retrievals in either MSG and MTG
     BOTH = "both" # Retrieved ash in both MSG and MTG
     OTHER = "other" # Anything else
@@ -123,9 +120,7 @@ class RetrievalCode(Enum):
 codes_to_ignore=[RetrievalCode.NORET, RetrievalCode.BOTH]
 
 retrieval_code_labels = {
-    RetrievalCode.CONF7_LIBMASK: "MTG Conf 7, MSG Conf 0 fails: Liberal Mask",
     RetrievalCode.CONF7_C1: "MTG Conf 7, MSG Conf 0 fails: C1 Threshold",
-    RetrievalCode.CONF7_C1_LIBMASK: "MTG Conf 7, MSG Conf 0 fails: C1 & Lib Mask",
     RetrievalCode.CONF7_OTHER: "MTG Conf 7, MSG Conf 0 fails: Other",
     RetrievalCode.CONF4_CONMASK: "MTG Conf 4, MSG Conf 0 fails: Conservative Mask",
     RetrievalCode.CONF4_C4: "MTG Conf 4, MSG Conf 0 fails: C4 Threshold",
@@ -149,9 +144,7 @@ retrieval_code_labels = {
     RetrievalCode.CONF1_C3 : "MTG Conf 1, MSG Conf 0 fails: C3 Threshold",
     RetrievalCode.CONF1_LIBMASK : "MTG Conf 1, MSG Conf 0 fails: Liberal Mask",
     RetrievalCode.CONF1_OTHER : "MTG Conf 1, MSG Conf 0 fails: Other",
-    RetrievalCode.CONF7_LIBMASK_MSGCONF1: "MTG Conf 7, MSG Conf 1 fails: Liberal Mask",
     RetrievalCode.CONF7_C1_MSGCONF1: "MTG Conf 7, MSG Conf 1 fails: C1 Threshold",
-    RetrievalCode.CONF7_C1_LIBMASK_MSGCONF1: "MTG Conf 7, MSG Conf 1 fails: C1 & Lib Mask",
     RetrievalCode.CONF7_OTHER_MSGCONF1: "MTG Conf 7, MSG Conf 1 fails: Other",
     RetrievalCode.CONF4_CONMASK_MSGCONF1: "MTG Conf 4, MSG Conf 1 fails: Conservative Mask",
     RetrievalCode.CONF4_C4_MSGCONF1: "MTG Conf 4, MSG Conf 1 fails: C4 Threshold",
@@ -171,6 +164,7 @@ retrieval_code_labels = {
     RetrievalCode.CONF3_OTHER_MSGCONF1: "MTG Conf 3, MSG Conf 1 fails: Other",
     RetrievalCode.CONF1_MSGCONF1: "MTG Conf 1, MSG Conf 1",
     RetrievalCode.CONF4_MSGCONF4: "MTG Conf 4, MSG Conf 4",
+    RetrievalCode.CONF7_MSGCONF7: "MTG Conf 7, MSG Conf 7",
     RetrievalCode.CONF4_C4_CONMASK_MSGCONF2: "MTG Conf 4, MSG Conf 2 fails: C4 & Con Mask",
     RetrievalCode.CONF4_C4_MSGCONF2: "MTG Conf 4, MSG Conf 2 fails: C4 Threshold",
     RetrievalCode.CONF4_CONMASK_MSGCONF2: "MTG Conf 4, MSG Conf 2 fails: Con Mask",
@@ -483,13 +477,8 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
                 retrievalcode = RetrievalCode("conf1_other")
         elif mtg_conf == 7 and msg_conf == 0:
             failc1 = msg_btd2 > msg_match["c1"]
-            failconmask = msg_libmask == 'F'
-            if failc1 and failconmask:
-                retrievalcode = RetrievalCode("conf7_c1_libmask")
-            elif failc1:
+            if failc1:
                 retrievalcode = RetrievalCode("conf7_c1")
-            elif failconmask:
-                retrievalcode = RetrievalCode("conf7_libmask")
             else:
                 retrievalcode = RetrievalCode("conf7_other")
         elif mtg_conf == 4 and msg_conf == 1:
@@ -536,13 +525,8 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
             retrievalcode = RetrievalCode("conf1_msgconf1")
         elif mtg_conf == 7 and msg_conf == 1:
             failc1 = msg_btd2 > msg_match["c1"]
-            failconmask = msg_libmask == 'F'
-            if failc1 and failconmask:
-                retrievalcode = RetrievalCode("conf7_c1_libmask_msgconf1")
-            elif failc1:
+            if failc1:
                 retrievalcode = RetrievalCode("conf7_c1_msgconf1")
-            elif failconmask:
-                retrievalcode = RetrievalCode("conf7_libmask_msgconf1")
             else:
                 retrievalcode = RetrievalCode("conf7_other_msgconf1")
         elif mtg_conf == 4 and msg_conf == 4:
@@ -569,11 +553,14 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
                 retrievalcode = RetrievalCode("conf1_conmask_msgconf4")
             else:
                 retrievalcode = RetrievalCode("conf1_other_msgconf4")
+        elif mtg_conf == 7 and msg_conf == 7:
+            retrievalcode = RetrievalCode("conf7_msgconf7")
         elif mtg_conf == 0: # and msg_conf == 0:
             retrievalcode = RetrievalCode("noret")
         #elif mtg_conf > 0 and msg_conf > 0:
         #    retrievalcode = RetrievalCode("both")
         else:
+            #import pdb; pdb.set_trace()
             retrievalcode = RetrievalCode("other")
         retrievalcodes.append(retrievalcode)
         
@@ -653,7 +640,7 @@ def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, p
         plotc4=plotc4,
         plotc1=plotc1,
         plotc3=plotc3,
-        outname=f"BTD2_{region}_{timestr}.png",
+        outname=f"BTD2_{region.replace(" ","_")}_{timestr}.png",
         latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
         regionstr=f"Plot Region: {region}",
         timestr=f"Time: {timestr}",
@@ -670,7 +657,7 @@ def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, p
         title="UK: BTD3 values for MSG/MTG matches",
         xmin=1.0,
         plotBTD3thresh=True,
-        outname=f"BTD3_{region}_{timestr}.png",
+        outname=f"BTD3_{region.replace(" ","_")}_{timestr}.png",
         latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
         regionstr=f"Plot Region: {region}",
         timestr=f"Time: {timestr}",
@@ -713,7 +700,14 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         unique_codes = df_msg_matches['retrieval_code'].unique()
         # Work-around for reading from file because can't read enums from a file...
         _codes_to_ignore = [str(_code) for _code in codes_to_ignore] if read_from_file else codes_to_ignore
-        colors = plt.get_cmap('tab10', len(unique_codes))
+        if len(unique_codes) < 9:
+            colors = plt.get_cmap('Dark2', len(unique_codes))
+        elif len(unique_codes) < 11:
+            colors = plt.get_cmap('tab10', len(unique_codes))
+        elif len(unique_codes) < 13:
+            colors = plt.get_cmap('Paired', len(unique_codes))
+        else:
+            colors = plt.get_cmap('tab20', len(unique_codes))
 
         for i, code in enumerate(unique_codes):
             code_subset = df_msg_matches[df_msg_matches['retrieval_code'] == code]
@@ -734,8 +728,10 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
 
         xlim = plt.gca().get_xlim()
         ylim = plt.gca().get_ylim()
-        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9975, cut_str, color='black', va='top', ha='left')
-        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9900, f"Time: {timestr}",color='black', va='top', ha='left')
+
+        plotstr = f"Region: {region}\n"+f"{cut_str}\n"+f"Time: {timestr}"
+        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - (ylim[1]-ylim[0])*0.02, plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
+
 
         gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
         gl.xlines = True   
@@ -747,7 +743,7 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         gl.ylabel_style = {'size': 14}    
 
         # Save the plot before showing
-        outname = f"{region}_{timestr}_detection_codes.png"
+        outname = f"{region.replace(" ","_")}_{timestr}_detection_type_map.png"
         #plot_path = outdir + "/{}_detection_codes.png".format(master_csv_file.rsplit(".csv")[0])
         plot_path = outdir + outname
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
@@ -787,26 +783,6 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
 
         xlim = plt.gca().get_xlim()
         ylim = plt.gca().get_ylim()
-        plt.text(
-            xlim[1] - 0.63*(xlim[1]-xlim[0]), ylim[1]*0.55,
-            latlonstr,
-            ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
-        )
-        plt.text(
-            xlim[1] - 0.63*(xlim[1]-xlim[0]), ylim[1]*0.48,
-            f"Region: {region}",
-            ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
-        )
-        plt.text(
-            xlim[1] - 0.63*(xlim[1]-xlim[0]), ylim[1]*0.41,
-            cut_str,
-            ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
-        )
-        plt.text(
-            xlim[1] - 0.63*(xlim[1]-xlim[0]), ylim[1]*0.34,
-            f"Time: {timestr}",
-            ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
-        )
 
         plt.ylabel("Count")
         plt.xlabel("Detection Type")
@@ -833,7 +809,23 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         ]
         plt.legend(handles=legend_handles, title="Detection Type", fontsize='small', loc='upper right')
 
-        outname = f"{region}_{timestr}_detection_type_frequencies.png"
+        # Get the bounding box of the legend in display coordinates
+        bbox = plt.gca().get_legend().get_window_extent()
+        # Transform to axes coordinates
+        ax = plt.gca()
+        inv = ax.transAxes.inverted()
+        bbox_ax = inv.transform(bbox)
+        # Place the text just below the legend
+        x_text = bbox_ax[0][0]  # left of legend
+        y_text = bbox_ax[0][1] - 0.05  # slightly below legend
+        plt.text(
+        x_text, y_text,
+        f"{latlonstr}\nRegion: {region}\n{cut_str}\nTime: {timestr}",
+        ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'),
+        transform=ax.transAxes
+        )
+
+        outname = f"{region.replace(" ","_")}_{timestr}_detection_type_histogram.png"
         plot_path = outdir + outname
         print(f"Plot saved to {plot_path}")
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
@@ -935,7 +927,7 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg'):
             plt.legend()
             plt.title(r'$\beta$ space '+mode.upper())
             # Save plot
-            outname = f"beta_space_{mode}_{region}_{timestr}.png"
+            outname = f"beta_space_{mode}_{region.replace(" ","_")}_{timestr}.png"
             plotpath = outdir+'/'+outname
             plt.savefig(plotpath)
             plt.show()
@@ -1066,7 +1058,8 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
             latstr = '('+str(round(lat_min,1))+','+str(round(lat_max,1))+')'
             lonstr = '('+str(round(lon_min,1))+','+str(round(lon_max,1))+')'
             plotstr = f"Plot Region: {region}\n"+f"Lat/Lon: {latstr}/{lonstr}\n"+f"Percentage Passed: {passed_str}\n"+f"Time: {timestr}"
-            plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*1.005, plotstr, color='black', va='top', ha='left')
+            plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - 0.025*(ylim[1]-ylim[0]), plotstr, color='black', va='top', ha='left', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
+            #plt.text(xlim[0] + 0.025*(xlim[1]-xlim[0]), ylim[0]+0.15*(ylim[1]-ylim[0]), plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
             '''
             plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9910, f"Lat/Lon: {latstr}/{lonstr}",color='black', va='top', ha='left')
             plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1]*0.9845, f"Percentage Passed: {passed_str}",color='black', va='top', ha='left')
@@ -1075,7 +1068,7 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
             #outname = f"grid_Median_VA_conf_4_{master_csv_file.split('.csv')[0]}_{str(lon_range[0])}_{str(lon_range[1])}_{str(lat_range[0])}_{str(lat_range[1])}.png"
             constraintstrs_output = [f"{var}_{op_map_str[op]}_{val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
             constraintstr_output = "_".join(constraintstrs_output)
-            outname = f"grid_{constraintstr_output}_{region}_{timestr}{satstr}.png"
+            outname = f"grid_{constraintstr_output}_{region.replace(" ","_")}_{timestr}{satstr}.png"
             print(f"Saving fig to {outdir+'/'+outname}")
             ax.coastlines()
             plt.savefig(outdir+'/'+outname)
