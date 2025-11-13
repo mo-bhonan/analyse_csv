@@ -732,7 +732,6 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         plotstr = f"Region: {region}\n"+f"{cut_str}\n"+f"Time: {timestr}"
         plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - (ylim[1]-ylim[0])*0.02, plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
 
-
         gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
         gl.xlines = True   
         gl.bottom_labels = True
@@ -961,8 +960,8 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
             lon_range = (float(latlonlist[2]),float(latlonlist[3]))
 
             ax = plt.axes(projection=ccrs.PlateCarree())
-            lon_min = lat_min = 100.
-            lon_max = lat_max = -100.
+            #lon_min = lat_min = 100.
+            #lon_max = lat_max = -100.
             passed_str = ""
             legend_elements = []
             mtgpath, msgpath = indir+'/'+mtgcsv, indir+'/'+msgcsv
@@ -1003,30 +1002,39 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
             if plotmsg:
                 lons_msg = np.array(df_msg["Lon"])
                 lats_msg = np.array(df_msg["Lat"])
-                # Assume lon/lat min max are same for MSG and MTG. TODO: Could add error catching to make sure this is true
-                #lon_min = min(lon_min, lons_msg.min())
-                #lon_max = max(lon_max, lons_msg.max())
-                #lat_min = min(lat_min, lats_msg.min())
-                #lat_max = max(lat_max, lats_msg.max())
-
-                lon_min = min(lon_min, np.min(lons_msg, initial=100.))
-                lon_max = max(lon_max, np.max(lons_msg, initial=-100.))
-                lat_min = min(lat_min, np.min(lats_msg, initial=100.))
-                lat_max = max(lat_max, np.max(lats_msg, initial=-100.))
-
+            #    # Assume lon/lat min max are same for MSG and MTG. TODO: Could add error catching to make sure this is true
+            #    #lon_min = min(lon_min, lons_msg.min())
+            #    #lon_max = max(lon_max, lons_msg.max())
+            #    #lat_min = min(lat_min, lats_msg.min())
+            #    #lat_max = max(lat_max, lats_msg.max())
+            #
+            #    lon_min = min(lon_min, np.min(lons_msg, initial=100.))
+            #    lon_max = max(lon_max, np.max(lons_msg, initial=-100.))
+            #    lat_min = min(lat_min, np.min(lats_msg, initial=100.))
+            #    lat_max = max(lat_max, np.max(lats_msg, initial=-100.))
+            #
             if plotmtg:
                 lons_mtg = np.array(df_mtg["Lon"])
                 lats_mtg = np.array(df_mtg["Lat"])
-                # Assume lon/lat min max are same for MSG and MTG. TODO: Could add error catching to make sure this is true
-                #lon_min = min(lon_min, lons_mtg.min())
-                #lon_max = max(lon_max, lons_mtg.max())
-                #lat_min = min(lat_min, lats_mtg.min())
-                #lat_max = max(lat_max, lats_mtg.max())
+            #    # Assume lon/lat min max are same for MSG and MTG. TODO: Could add error catching to make sure this is true
+            #    #lon_min = min(lon_min, lons_mtg.min())
+            #    #lon_max = max(lon_max, lons_mtg.max())
+            #    #lat_min = min(lat_min, lats_mtg.min())
+            #    #lat_max = max(lat_max, lats_mtg.max())
+            #
+            #    lon_min = min(lon_min, np.min(lons_mtg, initial=100.))
+            #    lon_max = max(lon_max, np.max(lons_mtg, initial=-100.))
+            #    lat_min = min(lat_min, np.min(lats_mtg, initial=100.))
+            #    lat_max = max(lat_max, np.max(lats_mtg, initial=-100.))
 
-                lon_min = min(lon_min, np.min(lons_mtg, initial=100.))
-                lon_max = max(lon_max, np.max(lons_mtg, initial=-100.))
-                lat_min = min(lat_min, np.min(lats_mtg, initial=100.))
-                lat_max = max(lat_max, np.max(lats_mtg, initial=-100.))
+            gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
+            gl.xlines = True   
+            gl.bottom_labels = True
+            gl.left_labels = True
+            gl.xformatter = LONGITUDE_FORMATTER
+            gl.yformatter = LATITUDE_FORMATTER
+            gl.xlabel_style = {'size': 14} 
+            gl.ylabel_style = {'size': 14}    
 
             # Assume time string is same for MSG and MTG. TODO: Could add error catching to make sure this is true
             timestr = msgcsv.split("_")[1]
@@ -1055,9 +1063,10 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly=""):
             plt.title(f'Pixels passing {constraintstr}')
             xlim = plt.gca().get_xlim()
             ylim = plt.gca().get_ylim()
-            latstr = '('+str(round(lat_min,1))+','+str(round(lat_max,1))+')'
-            lonstr = '('+str(round(lon_min,1))+','+str(round(lon_max,1))+')'
-            plotstr = f"Plot Region: {region}\n"+f"Lat/Lon: {latstr}/{lonstr}\n"+f"Percentage Passed: {passed_str}\n"+f"Time: {timestr}"
+            #latstr = '('+str(round(lat_min,1))+','+str(round(lat_max,1))+')'
+            #lonstr = '('+str(round(lon_min,1))+','+str(round(lon_max,1))+')'
+            #plotstr = f"Plot Region: {region}\n"+f"Lat/Lon: {latstr}/{lonstr}\n"+f"Percentage Passed: {passed_str}\n"+f"Time: {timestr}"
+            plotstr = f"Plot Region: {region}\n"+f"Percentage Passed: {passed_str}\n"+f"Time: {timestr}"
             plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - 0.025*(ylim[1]-ylim[0]), plotstr, color='black', va='top', ha='left', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
             #plt.text(xlim[0] + 0.025*(xlim[1]-xlim[0]), ylim[0]+0.15*(ylim[1]-ylim[0]), plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
             '''
