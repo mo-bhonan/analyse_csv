@@ -221,6 +221,7 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
             mtg_perc_above_btd3 = (sum(1 for btd in btds[0] if btd > 1.5)/len(btds[0])) * 100
             msg_perc_above_btd3 = (sum(1 for btd in btds[1] if btd > 1.5)/len(btds[1])) * 100
 
+    plt.figure()
     plt.hist(btds, bins=nbins, range=(xmin, xmax), density=True, color=colors, label=labels, edgecolor='black')
     plt.legend(title="Satellite Type")
 
@@ -319,12 +320,13 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
         )
 
     if savehist:
-        print(f"Saving figure to:{plot_dir+'/'+outname}")
+        print(f"Plot saved to: {plot_dir+'/'+outname}")
         plt.savefig(plot_dir+'/'+outname)
         plt.savefig(plot_dir+'/'+outname.replace("png","svg"))
         plt.savefig(plot_dir+'/'+outname.replace("png","pdf"))
     if showhist:
         plt.show()
+    plt.close()
 
 def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_output_csv, output_txt=False, threshold=0.01, conf_cut=None):
 
@@ -582,7 +584,6 @@ def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, p
         msg_btd3 = df_msg["VolcanicAsh_BTD3"].values
 
         # Plot BTD2 histogram
-        plt.figure()
         plot_btd_hist(
             [mtg_btd2, msg_btd2],
             xlabel="BTD2",
@@ -596,12 +597,11 @@ def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, p
             latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
             regionstr=f"Plot Region: {region}",
             timestr=f"Time: {timestr}",
+            plot_dir=outdir,
             showhist=show_plots
         )
-        plt.close()
 
         # Plot BTD3 histogram
-        plt.figure()
         plot_btd_hist(
             [mtg_btd3, msg_btd3],
             xlabel="BTD3",
@@ -613,9 +613,9 @@ def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, p
             latlonstr=f"Lat/Lon: {latstr}/{lonstr}",
             regionstr=f"Plot Region: {region}",
             timestr=f"Time: {timestr}",
+            plot_dir=outdir,
             showhist=show_plots
         )
-        plt.close()
 
 def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, write_output_matches=True, show_plots=False):
 
@@ -694,13 +694,14 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
 
         # Save the plot before showing
         outname = f"{region.replace(" ","_")}_{timestr}_detection_type_map.png"
-        plot_path = outdir + outname
+        plot_path = outdir + "/" + outname
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         plt.savefig(plot_path.replace("png","svg"), dpi=300, bbox_inches='tight')
         plt.savefig(plot_path.replace("png","pdf"), dpi=300, bbox_inches='tight')
-        print(f"Plot saved to {plot_path}")
+        print(f"Plot saved to: {plot_path}")
         if show_plots:
             plt.show()
+        plt.close()
 
         # Convert codes to strings if they are enums
         code_strings = [retrieval_code_labels.get(RetrievalCode(code.split('.')[-1].lower()), str(code)) if read_from_file else retrieval_code_labels.get(code, str(code)) for code in codes.values]
@@ -778,13 +779,14 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         )
 
         outname = f"{region.replace(" ","_")}_{timestr}_detection_type_histogram.png"
-        plot_path = outdir + outname
-        print(f"Plot saved to {plot_path}")
+        plot_path = outdir + "/" + outname
+        print(f"Plot saved to: {plot_path}")
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         plt.savefig(plot_path.replace("png","svg"), bbox_inches='tight')
         plt.savefig(plot_path.replace("png","pdf"), bbox_inches='tight')
         if show_plots:
             plt.show()
+        plt.close()
 
 def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plots=False):
     aa = -0.4
@@ -893,7 +895,8 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
             plt.savefig(plotpath.replace("png","pdf"))
             if show_plots:
                 plt.show()
-            print(f"Plot saved as {plotpath}")
+            print(f"Plot saved to: {plotpath}")
+            plt.close()
 
 def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=False):
 
@@ -1004,13 +1007,14 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
             constraintstrs_output = [f"{var}_{op_map_str[op]}_{val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
             constraintstr_output = "_".join(constraintstrs_output)
             outname = f"grid_{constraintstr_output}_{region.replace(" ","_")}_{timestr}{satstr}.png"
-            print(f"Saving fig to {outdir+'/'+outname}")
             ax.coastlines()
             plt.savefig(outdir+'/'+outname)
+            print(f"Plot saved to: {outdir+'/'+outname}")
             plt.savefig(outdir+'/'+outname.replace("png","svg"))
             plt.savefig(outdir+'/'+outname.replace("png","pdf"))
             if show_plots:
                 plt.show()
+            plt.close()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Create MSG/MTG retrieval code plots")
@@ -1028,13 +1032,13 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     if args.plot_points:
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, args.show_plots)
+        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, show_plots=args.show_plots)
     elif args.plot_btd:
-        make_btd_plots(args.indir, args.outdir, args.master_csv_file, args.show_plots)
+        make_btd_plots(args.indir, args.outdir, args.master_csv_file, show_plots=args.show_plots)
     elif args.plot_beta_masks:
-        plot_beta_masks(args.indir, args.outdir, args.master_csv_file, args.show_plots)
+        plot_beta_masks(args.indir, args.outdir, args.master_csv_file, show_plots=args.show_plots)
     elif args.plot_nn:
-        analyse_csv_nearestneighbors(args.indir, args.outdir, args.master_csv_file, args.recreate_csv, args.show_plots)
+        analyse_csv_nearestneighbors(args.indir, args.outdir, args.master_csv_file, args.recreate_csv, show_plots=args.show_plots)
     else:
         outdir = args.outdir+"/"+args.master_csv_file.replace(".csv","")
         if not os.path.exists(outdir):
