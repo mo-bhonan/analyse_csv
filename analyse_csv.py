@@ -850,9 +850,15 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
 
         df_mtg_unfiltered = _df_mtg[(_df_mtg['aa'] == -0.4) & (_df_mtg['bb'] == -0.4) & (_df_mtg['cc'] == 2.5)]
         df_mtg_low_lat = _df_mtg[(_df_mtg['aa'] == -0.9) & (_df_mtg['bb'] == 0.0) & (_df_mtg['cc'] == 2.3)]
+        df_mtg_high_zenith = _df_mtg[(_df_mtg['aa'] == -1.0) & (_df_mtg['bb'] == 0.0) & (_df_mtg['cc'] == 2.3)]
+        df_mtg_sh_arid = _df_mtg[(_df_mtg['aa'] == -1.0) & (_df_mtg['bb'] == 0.0) & (_df_mtg['cc'] == 1.6)]
+        df_mtg_nh_arid = _df_mtg[(_df_mtg['aa'] == -1.0) & (_df_mtg['bb'] == 0.0) & (_df_mtg['cc'] == 1.3)]
 
         df_msg_unfiltered = _df_msg[(_df_msg['aa'] == -0.4) & (_df_msg['bb'] == -0.4) & (_df_msg['cc'] == 2.5)]
         df_msg_low_lat = _df_msg[(_df_msg['aa'] == -0.9) & (_df_msg['bb'] == 0.0) & (_df_msg['cc'] == 2.3)]
+        df_msg_high_zenith = _df_msg[(_df_msg['aa'] == -1.0) & (_df_msg['bb'] == 0.0) & (_df_msg['cc'] == 2.3)]
+        df_msg_sh_arid = _df_msg[(_df_msg['aa'] == -1.0) & (_df_msg['bb'] == 0.0) & (_df_msg['cc'] == 1.6)]
+        df_msg_nh_arid = _df_msg[(_df_msg['aa'] == -1.0) & (_df_msg['bb'] == 0.0) & (_df_msg['cc'] == 1.3)]
 
         lons_msg = np.array(_df_msg["Lon"])
         lats_msg = np.array(_df_msg["Lat"])
@@ -876,18 +882,32 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
         timestr = msgcsv.split("_")[1]
         regionstr=f"Plot Region: {region}"
 
-        for df_mtg, df_msg, name in [(df_mtg_unfiltered, df_msg_unfiltered, "unfiltered"), (df_mtg_low_lat, df_msg_low_lat, "low_lat")]:
+        for df_mtg, df_msg, name in [(df_mtg_unfiltered, df_msg_unfiltered, "Unfiltered"), (df_mtg_low_lat, df_msg_low_lat, "Low_Lat"),
+                                     (df_mtg_high_zenith, df_msg_high_zenith, "High_Zenith"), (df_mtg_sh_arid, df_msg_sh_arid, "SH_Arid"),
+                                     (df_mtg_nh_arid, df_msg_nh_arid, "NH_Arid")]:
 
             if len(df_mtg) == 0 or len(df_msg) == 0:
                 continue
-            if name == "unfiltered":
+            if name == "Unfiltered":
                 aa = -0.4
                 bb = -0.4
                 c = 2.5
-            elif name == "low_lat":
+            elif name == "Low_Lat":
                 aa = -0.9
                 bb = 0.0
                 c = 2.3
+            elif name == "High_Zenith":
+                aa = -1.0
+                bb = 0.0
+                c = 2.3
+            elif name == "SH_Arid":
+                aa = -1.0
+                bb = 0.0
+                c = 1.6
+            elif name == "NH_Arid":
+                aa = -1.0
+                bb = 0.0
+                c = 1.3
             else:
                 raise ValueError("Got a beta mask which isn't unfiltered or low_lat. Exiting...")
 
@@ -905,8 +925,8 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
 
                 # Create plot
                 plt.figure(figsize=(8, 6))
-                plt.plot(x, y_conservative, 'r--', label=f'Conservative Beta Mask: {name}')
-                plt.plot(x, y_liberal, 'b--', label=f'Liberal Beta Mask: {name}')
+                plt.plot(x, y_conservative, 'r--', label=f'Conservative Beta Mask: {name.replace("_"," ")}')
+                plt.plot(x, y_liberal, 'b--', label=f'Liberal Beta Mask: {name.replace("_"," ")}')
                 plt.xlabel(r'$\beta$(8.7,10.8)')
                 plt.ylabel(r'$\beta$(12.0,10.8)')
                 plt.grid(True)
