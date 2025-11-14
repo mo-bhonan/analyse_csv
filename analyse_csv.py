@@ -49,8 +49,26 @@ dict_cut_constraint = {
                  {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[3]},
                  {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[3]},
                  {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[3]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.1], 'plotonly':'msg'},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.1], 'plotonly':'mtg'},
+                 {'variables':["BTD2_conf"], 'operators':['>'], 'values':['df_c3'], 'plotonly':'msg'},
+                 {'variables':["BTD2_conf"], 'operators':['>'], 'values':['df_c3'], 'plotonly':'mtg'},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':['df_BTD3thresh'], 'plotonly':'msg'},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':['df_BTD3thresh'], 'plotonly':'mtg'},
+                 {'variables':["BMCon"], 'operators':['=='], 'values':['T'], 'plotonly':'msg'}, 
+                 {'variables':["BMCon"], 'operators':['=='], 'values':['T'], 'plotonly':'mtg'}, 
+                 {'variables':["BTD2_conf","BTD2_conf"], 'operators':['>', '<='], 'values':['df_c3', -0.1], 'plotonly':'msg'},
+                 {'variables':["BTD2_conf","BTD2_conf"], 'operators':['>', '<='], 'values':['df_c3', -0.1], 'plotonly':'mtg'},
+                 {'variables':["BTD2_conf","BTD2_conf","VolcanicAsh_BTD3"], 'operators':['>', '<=', '<='], 'values':['df_c3', -0.1, 'df_BTD3thresh'], 'plotonly':'msg'},
+                 {'variables':["BTD2_conf","BTD2_conf","VolcanicAsh_BTD3"], 'operators':['>', '<=', '<='], 'values':['df_c3', -0.1, 'df_BTD3thresh'], 'plotonly':'mtg'},
                  {'variables':["BTD2_conf", "BTD2_conf", "VolcanicAsh_BTD3", "BMCon"], 'operators':['>', '<=', '<=', '=='], 'values':['df_c3',-0.1,'df_BTD3thresh','T'], 'plotonly':'msg'},
                  {'variables':["BTD2_conf", "BTD2_conf", "VolcanicAsh_BTD3", "BMCon"], 'operators':['>', '<=', '<=', '=='], 'values':['df_c3',-0.1,'df_BTD3thresh','T'], 'plotonly':'mtg'},
+                 {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'msg'},
+                 {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'mtg'},
+                 {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'msg'},
+                 {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'mtg'},
+                 {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'msg'},
+                 {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'mtg'}
     ],
     'Med_VA_7': [{'variables':["BTD2_conf"], 'operators':['<='], 'values':['df_c1']},
                  {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[7]},
@@ -820,17 +838,6 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         plt.close()
 
 def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plots=False):
-    aa = -0.4
-    bb = -0.4
-    c = 2.5
-
-    # Define x range
-    x = np.linspace(0, 2.5, 100)
-
-    # Define polynomial function
-    y_conservative = aa * x**2 + bb * x + c - 0.4
-    y_liberal = aa * x**2 + bb * x + c
-
     df_master = pd.read_csv(indir+'/'+master_csv_file)
     for mtgcsv, msgcsv, region, plotbeta in zip(df_master['mtg_csv'], df_master['msg_csv'], df_master['region'], df_master['plotbeta']):
 
@@ -838,19 +845,25 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
         if not plotbeta:
             continue
 
-        df_mtg = pd.read_csv(indir + '/' + mtgcsv)
-        df_msg = pd.read_csv(indir + '/' + msgcsv)
+        _df_mtg = pd.read_csv(indir + '/' + mtgcsv)
+        _df_msg = pd.read_csv(indir + '/' + msgcsv)
 
-        lons_msg = np.array(df_msg["Lon"])
-        lats_msg = np.array(df_msg["Lat"])
+        df_mtg_unfiltered = _df_mtg[(_df_mtg['aa'] == -0.4) & (_df_mtg['bb'] == -0.4) & (_df_mtg['cc'] == 2.5)]
+        df_mtg_low_lat = _df_mtg[(_df_mtg['aa'] == -0.9) & (_df_mtg['bb'] == 0.0) & (_df_mtg['cc'] == 2.3)]
+
+        df_msg_unfiltered = _df_msg[(_df_msg['aa'] == -0.4) & (_df_msg['bb'] == -0.4) & (_df_msg['cc'] == 2.5)]
+        df_msg_low_lat = _df_msg[(_df_msg['aa'] == -0.9) & (_df_msg['bb'] == 0.0) & (_df_msg['cc'] == 2.3)]
+
+        lons_msg = np.array(_df_msg["Lon"])
+        lats_msg = np.array(_df_msg["Lat"])
 
         lon_min = lons_msg.min()
         lon_max = lons_msg.max()
         lat_min = lats_msg.min()
         lat_max = lats_msg.max()
 
-        lons_mtg = np.array(df_mtg["Lon"])
-        lats_mtg = np.array(df_mtg["Lat"])
+        lons_mtg = np.array(_df_mtg["Lon"])
+        lats_mtg = np.array(_df_mtg["Lat"])
 
         lon_min = min(lon_min, lons_mtg.min())
         lon_max = max(lon_max, lons_mtg.max())
@@ -863,71 +876,93 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
         timestr = msgcsv.split("_")[1]
         regionstr=f"Plot Region: {region}"
 
-        mtg_beta_870_108, msg_beta_870_108 = df_mtg['Beta_870_108'], df_msg['Beta_870_108']
-        mtg_beta_120_108, msg_beta_120_108 = df_mtg['Beta_120_108'], df_msg['Beta_120_108']
-        plotmodes = plotmode.split("_")
-        for mode in plotmodes:
+        for df_mtg, df_msg, name in [(df_mtg_unfiltered, df_msg_unfiltered, "unfiltered"), (df_mtg_low_lat, df_msg_low_lat, "low_lat")]:
 
-            # Create plot
-            plt.figure(figsize=(8, 6))
-            plt.plot(x, y_conservative, 'r--', label='Conservative Beta Mask')
-            plt.plot(x, y_liberal, 'b--', label='Liberal Beta Mask')
-            plt.xlabel(r'$\beta$(8.7,10.8)')
-            plt.ylabel(r'$\beta$(12.0,10.8)')
-            plt.grid(True)
-            plt.xlim(0, 2.5)
-            plt.ylim(0, 2.5)
-
-            # Create a 2D histogram (density map) for MTG and MSG beta values
-            x_bins = np.linspace(0, 2.5, 100)
-            y_bins = np.linspace(0, 2.5, 100)
-            if mode == 'msg':
-                xvals = np.array(msg_beta_870_108)
-                yvals = np.array(msg_beta_120_108)
-                H, xedges, yedges = np.histogram2d(xvals, yvals, bins=[x_bins, y_bins])
+            if len(df_mtg) == 0 or len(df_msg) == 0:
+                continue
+            if name == "unfiltered":
+                aa = -0.4
+                bb = -0.4
+                c = 2.5
+            elif name == "low_lat":
+                aa = -0.9
+                bb = 0.0
+                c = 2.3
             else:
-                xvals = np.array(mtg_beta_870_108)
-                yvals = np.array(mtg_beta_120_108)
-                H, xedges, yedges = np.histogram2d(xvals, yvals, bins=[x_bins, y_bins])
+                raise ValueError("Got a beta mask which isn't unfiltered or low_lat. Exiting...")
 
-            # Plot density
-            X, Y = np.meshgrid(xedges, yedges)
-            pcm = plt.pcolormesh(X, Y, H.T, cmap='gist_heat_r', shading='auto')
+            # Define x range
+            x = np.linspace(0, 2.5, 100)
 
-            # Calculate percentage below conservative and liberal lines
-            # For each point, check if y < y_conservative(x) or y < y_liberal(x)
-            def poly_conservative(xv):
-                return aa * xv**2 + bb * xv + c - 0.4
-            def poly_liberal(xv):
-                return aa * xv**2 + bb * xv + c
+            # Define polynomial function
+            y_conservative = aa * x**2 + bb * x + c - 0.4
+            y_liberal = aa * x**2 + bb * x + c
 
-            below_conservative = np.sum(yvals < poly_conservative(xvals))
-            below_liberal = np.sum(yvals < poly_liberal(xvals))
-            total_points = len(xvals)
-            perc_below_conservative = (below_conservative / total_points) * 100 if total_points > 0 else 0
-            perc_below_liberal = (below_liberal / total_points) * 100 if total_points > 0 else 0
-            passed_str = f"{perc_below_conservative:.1f}% below con., {perc_below_liberal:.1f}% below lib."
+            mtg_beta_870_108, msg_beta_870_108 = df_mtg['Beta_870_108'], df_msg['Beta_870_108']
+            mtg_beta_120_108, msg_beta_120_108 = df_mtg['Beta_120_108'], df_msg['Beta_120_108']
+            plotmodes = plotmode.split("_")
+            for mode in plotmodes:
 
-            # Add colorbar for combined scale
-            plt.colorbar(pcm, label='Count', orientation='vertical')
+                # Create plot
+                plt.figure(figsize=(8, 6))
+                plt.plot(x, y_conservative, 'r--', label=f'Conservative Beta Mask: {name}')
+                plt.plot(x, y_liberal, 'b--', label=f'Liberal Beta Mask: {name}')
+                plt.xlabel(r'$\beta$(8.7,10.8)')
+                plt.ylabel(r'$\beta$(12.0,10.8)')
+                plt.grid(True)
+                plt.xlim(0, 2.5)
+                plt.ylim(0, 2.5)
 
-            plotstr = f"{regionstr}\n"+f"{latlonstr}\n"+f"{passed_str}\n"+f"Time: {timestr}"
-            xlim = plt.gca().get_xlim()
-            ylim = plt.gca().get_ylim()
-            plt.text(xlim[0] + 0.025*(xlim[1]-xlim[0]), ylim[0]+0.15*(ylim[1]-ylim[0]), plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
+                # Create a 2D histogram (density map) for MTG and MSG beta values
+                x_bins = np.linspace(0, 2.5, 100)
+                y_bins = np.linspace(0, 2.5, 100)
+                if mode == 'msg':
+                    xvals = np.array(msg_beta_870_108)
+                    yvals = np.array(msg_beta_120_108)
+                    H, xedges, yedges = np.histogram2d(xvals, yvals, bins=[x_bins, y_bins])
+                else:
+                    xvals = np.array(mtg_beta_870_108)
+                    yvals = np.array(mtg_beta_120_108)
+                    H, xedges, yedges = np.histogram2d(xvals, yvals, bins=[x_bins, y_bins])
 
-            plt.legend()
-            plt.title(r'$\beta$ space '+mode.upper())
-            # Save plot
-            outname = f"beta_space_{mode}_{region.replace(" ","_")}_{timestr}.png"
-            plotpath = outdir+'/'+outname
-            plt.savefig(plotpath)
-            plt.savefig(plotpath.replace("png","svg"))
-            plt.savefig(plotpath.replace("png","pdf"))
-            if show_plots:
-                plt.show()
-            print(f"Plot saved to: {plotpath}")
-            plt.close()
+                # Plot density
+                X, Y = np.meshgrid(xedges, yedges)
+                pcm = plt.pcolormesh(X, Y, H.T, cmap='gist_heat_r', shading='auto')
+
+                # Calculate percentage below conservative and liberal lines
+                # For each point, check if y < y_conservative(x) or y < y_liberal(x)
+                def poly_conservative(xv):
+                    return aa * xv**2 + bb * xv + c - 0.4
+                def poly_liberal(xv):
+                    return aa * xv**2 + bb * xv + c
+
+                below_conservative = np.sum(yvals < poly_conservative(xvals))
+                below_liberal = np.sum(yvals < poly_liberal(xvals))
+                total_points = len(xvals)
+                perc_below_conservative = (below_conservative / total_points) * 100 if total_points > 0 else 0
+                perc_below_liberal = (below_liberal / total_points) * 100 if total_points > 0 else 0
+                passed_str = f"{perc_below_conservative:.1f}% below con., {perc_below_liberal:.1f}% below lib."
+
+                # Add colorbar for combined scale
+                plt.colorbar(pcm, label='Count', orientation='vertical')
+
+                plotstr = f"{regionstr}\n"+f"{latlonstr}\n"+f"{passed_str}\n"+f"Time: {timestr}"
+                xlim = plt.gca().get_xlim()
+                ylim = plt.gca().get_ylim()
+                plt.text(xlim[0] + 0.025*(xlim[1]-xlim[0]), ylim[0]+0.15*(ylim[1]-ylim[0]), plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
+
+                plt.legend()
+                plt.title(r'$\beta$ space '+mode.upper())
+                # Save plot
+                outname = f"beta_space_{mode}_{region.replace(" ","_")}_{timestr}_{name}.png"
+                plotpath = outdir+'/'+outname
+                plt.savefig(plotpath)
+                plt.savefig(plotpath.replace("png","svg"))
+                plt.savefig(plotpath.replace("png","pdf"))
+                if show_plots:
+                    plt.show()
+                print(f"Plot saved to: {plotpath}")
+                plt.close()
 
 def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=False):
 
@@ -1008,12 +1043,12 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
 
             # Assume time string is same for MSG and MTG. TODO: Could add error catching to make sure this is true
             timestr = msgcsv.split("_")[1]
-            if plotmtg:
-                ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
-                legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
             if plotmsg:
                 ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
                 legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
+            if plotmtg:
+                ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
+                legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
 
             plt.xlim(lon_range[0], lon_range[1])
             plt.ylim(lat_range[0], lat_range[1])
