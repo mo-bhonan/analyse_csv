@@ -70,6 +70,48 @@ dict_cut_constraint = {
                  {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'msg'},
                  {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'mtg'}
     ],
+    'Med_VA_5': [{'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.1]},
+                 {'variables':["BTD2_conf"], 'operators':['>'], 'values':['df_c3']},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':['df_BTD3thresh']},
+                 {'variables':["BMLib"], 'operators':['=='], 'values':['T']}, 
+                 {'variables':["BTD2_conf","BTD2_conf"], 'operators':['>', '<='], 'values':['df_c3', -0.1]},
+                 {'variables':["BTD2_conf","BTD2_conf","VolcanicAsh_BTD3"], 'operators':['>', '<=', '<='], 'values':['df_c3', -0.1, 'df_BTD3thresh']},
+                 {'variables':["BTD2_conf", "BTD2_conf", "VolcanicAsh_BTD3", "BMLib"], 'operators':['>', '<=', '<=', '=='], 'values':['df_c3',-0.1,'df_BTD3thresh','T']},
+                 {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[3]},
+                 {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[3]},
+                 {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[3]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.1], 'plotonly':'msg'},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.1], 'plotonly':'mtg'},
+                 {'variables':["BTD2_conf"], 'operators':['>'], 'values':['df_c3'], 'plotonly':'msg'},
+                 {'variables':["BTD2_conf"], 'operators':['>'], 'values':['df_c3'], 'plotonly':'mtg'},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':['df_BTD3thresh'], 'plotonly':'msg'},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':['df_BTD3thresh'], 'plotonly':'mtg'},
+                 {'variables':["BMLib"], 'operators':['=='], 'values':['T'], 'plotonly':'msg'}, 
+                 {'variables':["BMLib"], 'operators':['=='], 'values':['T'], 'plotonly':'mtg'}, 
+                 {'variables':["BTD2_conf","BTD2_conf"], 'operators':['>', '<='], 'values':['df_c3', -0.1], 'plotonly':'msg'},
+                 {'variables':["BTD2_conf","BTD2_conf"], 'operators':['>', '<='], 'values':['df_c3', -0.1], 'plotonly':'mtg'},
+                 {'variables':["BTD2_conf","BTD2_conf","VolcanicAsh_BTD3"], 'operators':['>', '<=', '<='], 'values':['df_c3', -0.1, 'df_BTD3thresh'], 'plotonly':'msg'},
+                 {'variables':["BTD2_conf","BTD2_conf","VolcanicAsh_BTD3"], 'operators':['>', '<=', '<='], 'values':['df_c3', -0.1, 'df_BTD3thresh'], 'plotonly':'mtg'},
+                 {'variables':["BTD2_conf", "BTD2_conf", "VolcanicAsh_BTD3", "BMLib"], 'operators':['>', '<=', '<=', '=='], 'values':['df_c3',-0.1,'df_BTD3thresh','T'], 'plotonly':'msg'},
+                 {'variables':["BTD2_conf", "BTD2_conf", "VolcanicAsh_BTD3", "BMLib"], 'operators':['>', '<=', '<=', '=='], 'values':['df_c3',-0.1,'df_BTD3thresh','T'], 'plotonly':'mtg'},
+                 {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'msg'},
+                 {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'mtg'},
+                 {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'msg'},
+                 {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'mtg'},
+                 {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'msg'},
+                 {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[3], 'plotonly':'mtg'}
+    ],
+    'Med_VA_6': [{'variables':["BTD2_conf"], 'operators':['<='], 'values':['df_c3']},
+                 {'variables':["BTD2_conf"], 'operators':['>'], 'values':['df_c1']},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':['df_BTD3thresh']},
+                 {'variables':["BMCon"], 'operators':['=='], 'values':['T']}, 
+                 {'variables':["BTD2_conf","BTD2_conf"], 'operators':['>', '<='], 'values':['df_c1', 'df_c3']},
+                 {'variables':["BTD2_conf","BTD2_conf","VolcanicAsh_BTD3"], 'operators':['>', '<=', '<='], 'values':['df_c1', 'df_c3', 'df_BTD3thresh']},
+                 {'variables':["BTD2_conf", "BTD2_conf", "VolcanicAsh_BTD3", "BMCon"], 'operators':['>', '<=', '<=', '=='], 'values':['df_c1','df_c3','df_BTD3thresh','T']},
+                 {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[6]},
+                 {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[6]},
+                 {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[6]},
+    ],
     'Med_VA_7': [{'variables':["BTD2_conf"], 'operators':['<='], 'values':['df_c1']},
                  {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[7]},
                  {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[7]},
@@ -123,6 +165,8 @@ class RetrievalCode(Enum):
     CONF1_MSGCONF1 = "conf1_msgconf1"
     CONF4_MSGCONF4 = "conf4_msgconf4"
     CONF3_MSGCONF3 = "conf3_msgconf3"
+    CONF3_MSGCONF4 = "conf3_msgconf4"
+    CONF6_MSGCONF3 = "conf6_msgconf3"
     CONF4_C4_CONMASK_MSGCONF2 = "conf4_c4_conmask_msgconf2"
     CONF4_C4_MSGCONF2 = "conf4_c4_msgconf2"
     CONF4_CONMASK_MSGCONF2 = "conf4_conmask_msgconf2"
@@ -184,6 +228,8 @@ retrieval_code_labels = {
     RetrievalCode.CONF4_MSGCONF4: "MTG Conf 4, MSG Conf 4",
     RetrievalCode.CONF7_MSGCONF7: "MTG Conf 7, MSG Conf 7",
     RetrievalCode.CONF3_MSGCONF3: "MTG Conf 3, MSG Conf 3",
+    RetrievalCode.CONF3_MSGCONF4: "MTG Conf 3, MSG Conf 4",
+    RetrievalCode.CONF6_MSGCONF3: "MTG Conf 6, MSG Conf 3",
     RetrievalCode.CONF4_C4_CONMASK_MSGCONF2: "MTG Conf 4, MSG Conf 2 fails: C4 & Con Mask",
     RetrievalCode.CONF4_C4_MSGCONF2: "MTG Conf 4, MSG Conf 2 fails: C4 Threshold",
     RetrievalCode.CONF4_CONMASK_MSGCONF2: "MTG Conf 4, MSG Conf 2 fails: Con Mask",
@@ -250,6 +296,8 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
             msg_perc_below_c3 = (sum(1 for btd in btds[1] if btd < -1.0)/len(btds[1])) * 100
             mtg_perc_above_c3 = 100. - mtg_perc_below_c3
             msg_perc_above_c3 = 100. - msg_perc_below_c3
+            mtg_perc_below_btd_cutoff = (sum(1 for btd in btds[0] if btd < -0.1)/len(btds[0])) * 100
+            msg_perc_below_btd_cutoff = (sum(1 for btd in btds[1] if btd < -0.1)/len(btds[1])) * 100
         elif plotc1:
             mtg_perc_below_c1 = (sum(1 for btd in btds[0] if btd < -2.06)/len(btds[0])) * 100
             msg_perc_below_c1 = (sum(1 for btd in btds[1] if btd < -2.00)/len(btds[1])) * 100
@@ -270,6 +318,7 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
     ylim = plt.gca().get_ylim()
     plt.ylim(ylim[0], ylim[1] * 1.45)  # Increase y-limit by 45% to make space for text
     ylim = plt.gca().get_ylim()
+    timestry=0.74
     if regionstr:
         plt.text(
             xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.98,
@@ -304,12 +353,18 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
         plt.text(-0.96, ylim[1]*0.65, 'C3 MSG', color='purple', rotation=90, va='top', ha='right', backgroundcolor='white')
         plt.axvline(-0.88, color='green', linestyle='--')
         plt.text(-0.84, ylim[1]*0.65, 'C3 MTG', color='green', rotation=90, va='top', ha='right', backgroundcolor='white')
+        plt.axvline(-0.1, color='red', linestyle='--')
+        plt.text(-0.06, ylim[1]*0.85, 'BTD Cutoff', color='red', rotation=90, va='top', ha='right', backgroundcolor='white')
         if "3" in conf_cut:
             textstrmtg = f"MTG % above C3: {mtg_perc_above_c3:.1f}%"
             textstrmsg = f"MSG % above C3: {msg_perc_above_c3:.1f}%"
+            textstrmtg2 = f"MTG % below BTD Cutoff: {mtg_perc_below_btd_cutoff:.1f}%"
+            textstrmsg2 = f"MSG % below BTD Cutoff: {msg_perc_below_btd_cutoff:.1f}%"
         else:
             textstrmtg = f"MTG % below C3: {mtg_perc_below_c3:.1f}%"
             textstrmsg = f"MSG % below C3: {msg_perc_below_c3:.1f}%"
+            textstrmtg2 = ""
+            textstrmsg2 = ""
         plt.text(
             xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.86,
             textstrmtg,
@@ -320,6 +375,18 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
             textstrmsg,
             ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
         )
+        if textstrmtg2:
+            timestry=0.62
+            plt.text(
+                xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.74,
+                textstrmtg2,
+                ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
+            )
+            plt.text(
+                xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.68,
+                textstrmsg2,
+                ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
+            )
     elif plotc4:
         plt.axvline(-0.5, color='purple', linestyle='--')
         plt.text(-0.5, ylim[1]*0.65, 'C4 MSG', color='purple', rotation=90, va='top', ha='right', backgroundcolor='white')
@@ -354,7 +421,7 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
         )
     if timestr:
         plt.text(
-            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*0.74,
+            xlim[1] - 0.55*(xlim[1]-xlim[0]), ylim[1]*timestry,
             timestr,
             ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
         )
@@ -394,6 +461,10 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
             df_mtg = df_mtg[(df_mtg['Median_VA_Confidence'] == 7)]
         elif conf_cut == "Med_VA_3":
             df_mtg = df_mtg[(df_mtg['Median_VA_Confidence'] == 3)]
+        elif conf_cut == "Med_VA_5":
+            df_mtg = df_mtg[(df_mtg['Median_VA_Confidence'] == 5)]
+        elif conf_cut == "Med_VA_6":
+            df_mtg = df_mtg[(df_mtg['Median_VA_Confidence'] == 6)]
 
     coords_msg = tuple(zip(np.array(df_msg['Lat']), np.array(df_msg['Lon'])))
     coords_mtg = tuple(zip(np.array(df_mtg['Lat']), np.array(df_mtg['Lon'])))
@@ -574,12 +645,15 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
                 retrievalcode = RetrievalCode("conf1_other_msgconf4")
         elif mtg_conf == 7 and msg_conf == 7:
             retrievalcode = RetrievalCode("conf7_msgconf7")
+        elif mtg_conf == 6 and msg_conf == 3:
+            retrievalcode = RetrievalCode("conf6_msgconf3")
+        elif mtg_conf == 3 and msg_conf == 4:
+            retrievalcode = RetrievalCode("conf3_msgconf4")
         elif mtg_conf == 3 and msg_conf == 3:
             retrievalcode = RetrievalCode("conf3_msgconf3")
         elif mtg_conf == 0:
             retrievalcode = RetrievalCode("noret")
         else:
-            import pdb; pdb.set_trace()
             retrievalcode = RetrievalCode("other")
         retrievalcodes.append(retrievalcode)
         
@@ -649,7 +723,7 @@ def make_btd_plots(indir, outdir, master_csv_file, plotc1=False, plotc3=False, p
             [mtg_btd3, msg_btd3],
             xlabel="BTD3",
             ylabel="Probability Density",
-            title="UK: BTD3 values for MSG/MTG matches",
+            title="BTD3 values",
             xmin=0,
             plotBTD3thresh=True,
             outname=f"BTD3_{region.replace(" ","_")}_{timestr}.png",
@@ -679,6 +753,10 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
             cut_str = "MTG Median_VA_Confidence == 7"
         elif conf_cut == "Med_VA_3":
             cut_str = "MTG Median_VA_Confidence == 3"
+        elif conf_cut == "Med_VA_5":
+            cut_str = "MTG Median_VA_Confidence == 5"
+        elif conf_cut == "Med_VA_6":
+            cut_str = "MTG Median_VA_Confidence == 6"
         timestr = msgcsv.split("_")[1]
         if not os.path.exists(f_output_csv) or recreate_csv:
             #TODO: In future can have a dictionary mapping cuts to regions
@@ -1078,7 +1156,17 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
             # Special case for -0.1, which is the BTD Cutoff value
             values = ['BTD_Cutoff' if val==str(-0.1) else val for val in values]
             constraintstrs = [f"{var} {op} {val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
-            constraintstr = "; ".join(constraintstrs)
+
+            # Add newline after every second constraint
+            formatted_strs = []
+            for i, s in enumerate(constraintstrs):
+                formatted_strs.append(s)
+                if (i + 1) % 2 == 0 and i < len(constraintstrs) - 1:
+                    formatted_strs.append("\n")
+                elif i < len(constraintstrs) - 1:
+                    formatted_strs.append("; ")
+
+            constraintstr = "".join(formatted_strs)
             satstr = ""
             if plotmtg and plotmsg:
                 satstr = "_MTG_MSG"
@@ -1119,18 +1207,18 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    outdir = args.outdir+"/"+args.master_csv_file.replace(".csv","")
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
     if args.plot_points:
-        plot_latlon_points(args.indir, args.outdir, args.master_csv_file, show_plots=args.show_plots)
+        plot_latlon_points(args.indir, outdir, args.master_csv_file, show_plots=args.show_plots)
     elif args.plot_btd:
-        make_btd_plots(args.indir, args.outdir, args.master_csv_file, show_plots=args.show_plots)
+        make_btd_plots(args.indir, outdir, args.master_csv_file, show_plots=args.show_plots)
     elif args.plot_beta_masks:
-        plot_beta_masks(args.indir, args.outdir, args.master_csv_file, show_plots=args.show_plots)
+        plot_beta_masks(args.indir, outdir, args.master_csv_file, show_plots=args.show_plots)
     elif args.plot_nn:
-        analyse_csv_nearestneighbors(args.indir, args.outdir, args.master_csv_file, args.recreate_csv, show_plots=args.show_plots)
+        analyse_csv_nearestneighbors(args.indir, outdir, args.master_csv_file, args.recreate_csv, show_plots=args.show_plots)
     else:
-        outdir = args.outdir+"/"+args.master_csv_file.replace(".csv","")
-        if not os.path.exists(outdir):
-            os.mkdir(outdir)
         analyse_csv_nearestneighbors(args.indir, outdir, args.master_csv_file, args.recreate_csv, show_plots=args.show_plots)
         make_btd_plots(args.indir, outdir, args.master_csv_file, show_plots=args.show_plots)
         plot_latlon_points(args.indir, outdir, args.master_csv_file, show_plots=args.show_plots)
