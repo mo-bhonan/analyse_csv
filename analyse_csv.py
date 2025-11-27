@@ -4,12 +4,14 @@ import argparse
 import operator
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
+from matplotlib.patches import Patch, Rectangle
 import cartopy.crs as ccrs
 from scipy.spatial import KDTree
 from enum import Enum
 from collections import Counter
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+
+savesvgpdf = False
 
 op_map = {
     '==': operator.eq,
@@ -110,12 +112,64 @@ dict_cut_constraint = {
                  {'variables':["BTD2_conf", "BTD2_conf", "VolcanicAsh_BTD3", "BMCon"], 'operators':['>', '<=', '<=', '=='], 'values':['df_c1','df_c3','df_BTD3thresh','T']},
                  {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[6]},
                  {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[6]},
-                 {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[6]},
+                 {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[6]}
+    ],
+    'Med_VA_gt_0': [{'variables':["PreFilter_VA_Confidence"], 'operators':['>'], 'values':[0]},
+                 {'variables':["PostFilter_VA_Confidence"], 'operators':['>'], 'values':[0]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-1, 1.5]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-1, 1.6]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-1, 1.7]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-1, 1.8]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-1, 1.9]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-1, 2.0]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-0.9, 1.6]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-0.8, 1.7]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-0.7, 1.8]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-0.6, 1.9]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-0.5, 2.0]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-0.4, 2.1]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-0.3, 2.2]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-0.2, 2.3]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-0.1, 2.4]},
+                 {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[0., 2.5]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-1]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-1]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-1]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-1]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-1]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-1]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.9]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.8]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.7]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.6]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.5]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.4]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.3]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.2]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[-0.1]},
+                 {'variables':["BTD2_conf"], 'operators':['<='], 'values':[0.]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[1.5]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[1.6]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[1.7]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[1.8]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[1.9]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[2.0]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[1.6]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[1.7]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[1.8]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[1.9]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[2.0]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[2.1]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[2.2]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[2.3]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[2.4]},
+                 {'variables':["VolcanicAsh_BTD3"], 'operators':['<='], 'values':[2.5]},
+                 {'variables':["Median_VA_Confidence"], 'operators':['>'], 'values':[0]}
     ],
     'Med_VA_7': [{'variables':["BTD2_conf"], 'operators':['<='], 'values':['df_c1']},
                  {'variables':["PreFilter_VA_Confidence"], 'operators':['=='], 'values':[7]},
                  {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[7]},
-                 {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[7]},
+                 {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[7]}
     ]
 }
 
@@ -429,8 +483,9 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
     if savehist:
         print(f"Plot saved to: {plot_dir+'/'+outname}")
         plt.savefig(plot_dir+'/'+outname)
-        plt.savefig(plot_dir+'/'+outname.replace("png","svg"))
-        plt.savefig(plot_dir+'/'+outname.replace("png","pdf"))
+        if savesvgpdf:
+            plt.savefig(plot_dir+'/'+outname.replace("png","svg"))
+            plt.savefig(plot_dir+'/'+outname.replace("png","pdf"))
     if showhist:
         plt.show()
     plt.close()
@@ -465,6 +520,8 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
             df_mtg = df_mtg[(df_mtg['Median_VA_Confidence'] == 5)]
         elif conf_cut == "Med_VA_6":
             df_mtg = df_mtg[(df_mtg['Median_VA_Confidence'] == 6)]
+        elif conf_cut == "Med_VA_gt_0":
+            df_mtg = df_mtg[(df_mtg['Median_VA_Confidence'] > 0)]
 
     coords_msg = tuple(zip(np.array(df_msg['Lat']), np.array(df_msg['Lon'])))
     coords_mtg = tuple(zip(np.array(df_mtg['Lat']), np.array(df_mtg['Lon'])))
@@ -478,27 +535,28 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
     coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
     search_matches = []
 
-    for coord in coords_search:
-        tree = KDTree(coords_tree)
-        distance, index = tree.query(coord)
-        if distance < threshold:
-            idx_tree = index
-            idx_search = coords_search.index(coord)
-            var_tree = df_tree.iloc[idx_tree]
-            var_search = df_search.iloc[idx_search]
-            # Always append MTG first
-            if build_msg_tree:
-                search_matches.append((var_search,var_tree))
-            else:
-                search_matches.append((var_tree,var_search))
-            if output_txt:
-                with open(f_output_txt, "a") as f:
-                    f.write(f"{'Satellite':<25}{sat_tree:>20}{sat_search:>20}\n")
-                    for col in df_tree.columns:
-                        val_tree = var_tree[col]
-                        val_search = var_search[col] if col in df_search.columns else "N/A"
-                        f.write(f"{col:<25}{str(val_tree):>20}{str(val_search):>20}\n")
-                    f.write("\n")
+    if len(coords_tree) != 0:
+        for coord in coords_search:
+            tree = KDTree(coords_tree)
+            distance, index = tree.query(coord)
+            if distance < threshold:
+                idx_tree = index
+                idx_search = coords_search.index(coord)
+                var_tree = df_tree.iloc[idx_tree]
+                var_search = df_search.iloc[idx_search]
+                # Always append MTG first
+                if build_msg_tree:
+                    search_matches.append((var_search,var_tree))
+                else:
+                    search_matches.append((var_tree,var_search))
+                if output_txt:
+                    with open(f_output_txt, "a") as f:
+                        f.write(f"{'Satellite':<25}{sat_tree:>20}{sat_search:>20}\n")
+                        for col in df_tree.columns:
+                            val_tree = var_tree[col]
+                            val_search = var_search[col] if col in df_search.columns else "N/A"
+                            f.write(f"{col:<25}{str(val_tree):>20}{str(val_search):>20}\n")
+                        f.write("\n")
 
     for pair in search_matches:
         mtg_match, msg_match = pair[0], pair[1]
@@ -662,7 +720,7 @@ def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_out
         raise ValueError("Length of retrievalcodes list not equal to list of nearest-neighbour MSG matches")
     df_msg_matches['retrieval_code'] = pd.Series(retrievalcodes)
 
-    if write_output_matches:
+    if not df_msg_matches.empty and write_output_matches:
         df_mtg_matches = pd.DataFrame(mtg_matches).reset_index(drop=True)
         df_msg_matches['MTG_BTD2_conf'] = df_mtg_matches['BTD2_conf']
         df_msg_matches['MTG_PreFilter_VA_Confidence'] = df_mtg_matches['PreFilter_VA_Confidence']
@@ -757,6 +815,8 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
             cut_str = "MTG Median_VA_Confidence == 5"
         elif conf_cut == "Med_VA_6":
             cut_str = "MTG Median_VA_Confidence == 6"
+        elif conf_cut == "Med_VA_gt_0":
+            cut_str = "MTG Median_VA_Confidence > 0"
         timestr = msgcsv.split("_")[1]
         if not os.path.exists(f_output_csv) or recreate_csv:
             #TODO: In future can have a dictionary mapping cuts to regions
@@ -823,8 +883,9 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         outname = f"{region.replace(" ","_")}_{timestr}_detection_type_map.png"
         plot_path = outdir + "/" + outname
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        plt.savefig(plot_path.replace("png","svg"), dpi=300, bbox_inches='tight')
-        plt.savefig(plot_path.replace("png","pdf"), dpi=300, bbox_inches='tight')
+        if savesvgpdf:
+            plt.savefig(plot_path.replace("png","svg"), dpi=300, bbox_inches='tight')
+            plt.savefig(plot_path.replace("png","pdf"), dpi=300, bbox_inches='tight')
         print(f"Plot saved to: {plot_path}")
         if show_plots:
             plt.show()
@@ -909,8 +970,9 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         plot_path = outdir + "/" + outname
         print(f"Plot saved to: {plot_path}")
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        plt.savefig(plot_path.replace("png","svg"), bbox_inches='tight')
-        plt.savefig(plot_path.replace("png","pdf"), bbox_inches='tight')
+        if savesvgpdf:
+            plt.savefig(plot_path.replace("png","svg"), bbox_inches='tight')
+            plt.savefig(plot_path.replace("png","pdf"), bbox_inches='tight')
         if show_plots:
             plt.show()
         plt.close()
@@ -1055,8 +1117,9 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
                 outname = f"beta_space_{mode}_{region.replace(" ","_")}_{timestr}_{name}.png"
                 plotpath = outdir+'/'+outname
                 plt.savefig(plotpath)
-                plt.savefig(plotpath.replace("png","svg"))
-                plt.savefig(plotpath.replace("png","pdf"))
+                if savesvgpdf:
+                    plt.savefig(plotpath.replace("png","svg"))
+                    plt.savefig(plotpath.replace("png","pdf"))
                 if show_plots:
                     plt.show()
                 print(f"Plot saved to: {plotpath}")
@@ -1067,6 +1130,9 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
     # constraints should be of the format {'variables':[],'operators':[],'values':[]}, e.g.
     # {'variables':["BTD2_conf", "BMCon"], 'operators':['>=', '=='], 'values':['df_c4','T']}
     # if 'df_x' is given in the values, df['x'] is treated as the value
+
+    plotbox=True
+    plotX=True
 
     df_master = pd.read_csv(indir+'/'+master_csv_file)
 
@@ -1107,11 +1173,19 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
                     sat = dflist[1]
                     mask = np.ones(len(df), dtype=bool)
                     for var, op_str, val in zip(constraints['variables'], constraints['operators'], constraints['values']):
+                        if op_str.startswith("or_"):
+                            mask_or = True
+                            op_str = op_str[3:]
+                        else:
+                            mask_or = False
                         op_func = op_map[op_str]
                         # if 'df_x' is given in the values, df['x'] is treated as the value
                         if isinstance(val, str) and val.startswith('df_'):
                             val = df[val[3:]]
-                        mask &= op_func(df[var], val)
+                        if not mask_or:
+                            mask &= op_func(df[var], val)
+                        else:
+                            mask |= op_func(df[var], val)
                     # Modify original dataframe
                     if sat == 'MTG':
                         df_mtg = df_mtg[mask]
@@ -1140,13 +1214,48 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
             gl.ylabel_style = {'size': 14}    
 
             # Assume time string is same for MSG and MTG. TODO: Could add error catching to make sure this is true
-            timestr = msgcsv.split("_")[1]
+            timestr_msg = msgcsv.split("_")[1]
+            timestr_mtg = mtgcsv.split("_")[1]
+            timestr = timestr_msg + "_" + timestr_mtg
             if plotmsg:
                 ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
                 legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
             if plotmtg:
                 ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
                 legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
+
+            if plotbox:
+                #lat_min, lat_max = 11.96,14.29 #lats_msg.min(), lats_msg.max()
+                #lon_min, lon_max = 40.75,45.62 #lons_msg.min(), lons_msg.max()
+                lat_min, lat_max = 10,25 #lats_msg.min(), lats_msg.max()
+                lon_min, lon_max = 35,55 #lons_msg.min(), lons_msg.max()
+                # Add rectangle to show the boundaries
+                rect = Rectangle(
+                    (lon_min, lat_min),
+                    lon_max - lon_min,
+                    lat_max - lat_min,
+                    linewidth=2,
+                    edgecolor='black',
+                    facecolor='none',
+                    linestyle='--',
+                    transform=ccrs.PlateCarree()
+                )
+                ax.add_patch(rect)
+            
+            if plotX:
+                # Add X marker at volcano
+                marker_lat = 13.51  
+                marker_lon = 40.72  
+
+                ax.scatter(
+                    marker_lon, marker_lat,
+                    marker='x',
+                    s=20,  # Size of the X
+                    c='black',  # Color
+                    linewidths=1,  # Thickness of the X
+                    transform=ccrs.PlateCarree(),
+                    zorder=10  # Ensure it's plotted on top
+                )
 
             plt.xlim(lon_range[0], lon_range[1])
             plt.ylim(lat_range[0], lat_range[1])
@@ -1178,16 +1287,17 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
             plt.title(f'Pixels passing {constraintstr}')
             xlim = plt.gca().get_xlim()
             ylim = plt.gca().get_ylim()
-            plotstr = f"Plot Region: {region}\n"+f"Percentage Passed: {passed_str}\n"+f"Time: {timestr}"
+            plotstr = f"Plot Region: {region}\n"+f"Percentage Passed: {passed_str}\n"+f"MSG Time: {timestr_msg}\n"+f"MTG Time: {timestr_mtg}"
             plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - 0.025*(ylim[1]-ylim[0]), plotstr, color='black', va='top', ha='left', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
-            constraintstrs_output = [f"{var}_{op_map_str[op]}_{val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
+            constraintstrs_output = [f"{var}_{op_map_str[op[3:] if op.startswith('or_') else op]}_{val}" for var, op, val in zip(constraints['variables'], constraints['operators'], values)]
             constraintstr_output = "_".join(constraintstrs_output)
             outname = f"grid_{constraintstr_output}_{region.replace(" ","_")}_{timestr}{satstr}.png"
             ax.coastlines()
             plt.savefig(outdir+'/'+outname)
             print(f"Plot saved to: {outdir+'/'+outname}")
-            plt.savefig(outdir+'/'+outname.replace("png","svg"))
-            plt.savefig(outdir+'/'+outname.replace("png","pdf"))
+            if savesvgpdf:
+                plt.savefig(outdir+'/'+outname.replace("png","svg"))
+                plt.savefig(outdir+'/'+outname.replace("png","pdf"))
             if show_plots:
                 plt.show()
             plt.close()
@@ -1207,7 +1317,7 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    outdir = args.outdir+"/"+args.master_csv_file.replace(".csv","")
+    outdir = args.outdir+"/gt_0_"+args.master_csv_file.replace(".csv","")
     if not os.path.exists(outdir):
         os.mkdir(outdir)
     if args.plot_points:
