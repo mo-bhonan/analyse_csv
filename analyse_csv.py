@@ -114,6 +114,7 @@ dict_cut_constraint = {
                  {'variables':["PostFilter_VA_Confidence"], 'operators':['=='], 'values':[6]},
                  {'variables':["Median_VA_Confidence"], 'operators':['=='], 'values':[6]}
     ],
+    'masked_test': [{'variables':["c3"], 'operators':['=='], 'values':['df_c3'], 'plotonly':'msg'}],
     'Med_VA_gt_0': [{'variables':["PreFilter_VA_Confidence"], 'operators':['>'], 'values':[0]},
                  {'variables':["PostFilter_VA_Confidence"], 'operators':['>'], 'values':[0]},
                  {'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-1, 1.5]},
@@ -978,6 +979,10 @@ def analyse_csv_nearestneighbors(indir, outdir, master_csv_file, recreate_csv, w
         plt.close()
 
 def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plots=False):
+
+    # Plot the beta space for VA which is detected by MSG but not by MTG. This is a proxy for SO2.
+    plotmasked = True
+
     df_master = pd.read_csv(indir+'/'+master_csv_file)
     for mtgcsv, msgcsv, region, plotbeta in zip(df_master['mtg_csv'], df_master['msg_csv'], df_master['region'], df_master['plotbeta']):
 
@@ -999,6 +1004,10 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
         df_msg_high_zenith = _df_msg[(_df_msg['aa'] == -1.0) & (_df_msg['bb'] == 0.0) & (_df_msg['cc'] == 2.3)]
         df_msg_sh_arid = _df_msg[(_df_msg['aa'] == -1.0) & (_df_msg['bb'] == 0.0) & (_df_msg['cc'] == 1.6)]
         df_msg_nh_arid = _df_msg[(_df_msg['aa'] == -1.0) & (_df_msg['bb'] == 0.0) & (_df_msg['cc'] == 1.3)]
+
+        dfs = [(df_mtg_unfiltered, df_msg_unfiltered, "Unfiltered"), (df_mtg_low_lat, df_msg_low_lat, "Low_Lat"),
+               (df_mtg_high_zenith, df_msg_high_zenith, "High_Zenith"), (df_mtg_sh_arid, df_msg_sh_arid, "SH_Arid"),
+               (df_mtg_nh_arid, df_msg_nh_arid, "NH_Arid")]
 
         lons_msg = np.array(_df_msg["Lon"])
         lats_msg = np.array(_df_msg["Lat"])
@@ -1022,9 +1031,63 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
         timestr = msgcsv.split("_")[1]
         regionstr=f"Plot Region: {region}"
 
-        for df_mtg, df_msg, name in [(df_mtg_unfiltered, df_msg_unfiltered, "Unfiltered"), (df_mtg_low_lat, df_msg_low_lat, "Low_Lat"),
-                                     (df_mtg_high_zenith, df_msg_high_zenith, "High_Zenith"), (df_mtg_sh_arid, df_msg_sh_arid, "SH_Arid"),
-                                     (df_mtg_nh_arid, df_msg_nh_arid, "NH_Arid")]:
+        if plotmasked:
+
+            threshold = 0.1
+            #{'variables':["BTD2_conf", "VolcanicAsh_BTD3"], 'operators':['<=', 'or_<='], 'values':[-1, 1.5]},
+            df_msg_det = _df_msg[(_df_msg['BTD2_conf'] <= -1.0) | (_df_msg['VolcanicAsh_BTD3'] <= 1.5)]
+            df_mtg_det = _df_mtg[(_df_mtg['BTD2_conf'] <= -1.0) | (_df_mtg['VolcanicAsh_BTD3'] <= 1.5)]
+
+            n_msg, n_mtg = len(df_msg_det), len(df_mtg_det)
+            build_msg_tree = True if n_msg < n_mtg else False
+            sat_tree, sat_search = ("MSG","MTG") if build_msg_tree else ("MTG","MSG")
+            # Define the df used to build the tree as the smallest one to optimise speed (building the tree is O(n log n))
+            df_tree, df_search = (df_msg_det, df_mtg_det) if build_msg_tree else (df_mtg_det, df_msg_det)
+            coords_tree = tuple(zip(np.array(df_tree['Lat']), np.array(df_tree['Lon'])))
+            coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
+            msg_matches = []
+
+            for coord in coords_search:
+                tree = KDTree(coords_tree)
+                distance, index = tree.query(coord)
+                # A match is one where MSG is FAR AWAY FROM MTG, therefore >= rather than <
+                if distance >= threshold:
+                    idx_tree = index
+                    idx_search = coords_search.index(coord)
+                    var_tree = df_tree.iloc[idx_tree]
+                    var_search = df_search.iloc[idx_search]
+                    # Always append MTG first
+                    if build_msg_tree:
+                        msg_matches.append(var_tree)
+                    else:
+                        msg_matches.append(var_search)
+
+            df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
+            #TODO: Hard-coded lon-lat filter.
+            df_msg_matches = df_msg_matches[((df_msg_matches['Lat'] > 13.) & (df_msg_matches['Lat'] < 14.)) & ((df_msg_matches['Lon'] > 40.) & (df_msg_matches['Lon'] < 45.))]
+
+            # Now use the MSG matches to search for the nearest neighbour MTG pixels
+
+            # Filter the lat/lon region to speed up the search
+            _df_mtg = _df_mtg[((_df_mtg['Lat'] > 13.) & (_df_mtg['Lat'] < 14.)) & ((_df_mtg['Lon'] > 40.) & (_df_mtg['Lon'] < 45.))]
+            # Have to build KD tree using larger dataset if doing a general NN search
+            df_tree, df_search = _df_mtg, df_msg_matches
+            coords_tree = tuple(zip(np.array(df_tree['Lat']), np.array(df_tree['Lon'])))
+            coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
+            mtg_matches = []
+
+            tree = KDTree(coords_tree)
+            nearest_dist, nearest_ind = tree.query(coords_search, k=1)
+            for iind, index in enumerate(nearest_ind):
+                mtg_matches.append(df_tree.iloc[index])
+                #print(f"Distance {nearest_dist[iind]} degrees")
+
+            print(f"Nearest neighbour indices: {nearest_ind}")
+
+            df_mtg_matches = pd.DataFrame(mtg_matches).reset_index(drop=True)
+            dfs.append((df_mtg_matches, df_msg_matches, "SO2_Proxy"))
+
+        for df_mtg, df_msg, name in dfs:
 
             if len(df_mtg) == 0 or len(df_msg) == 0:
                 continue
@@ -1048,6 +1111,10 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
                 aa = -1.0
                 bb = 0.0
                 c = 1.3
+            elif name == "SO2_Proxy":
+                aa = -0.9
+                bb = 0.0
+                c = 2.3
             else:
                 raise ValueError("Got a beta mask which isn't unfiltered or low_lat. Exiting...")
 
@@ -1065,10 +1132,17 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
 
                 # Create plot
                 plt.figure(figsize=(8, 6))
-                plt.plot(x, y_conservative, 'r--', label=f'Conservative Beta Mask: {name.replace("_"," ")}')
-                plt.plot(x, y_liberal, 'b--', label=f'Liberal Beta Mask: {name.replace("_"," ")}')
-                plt.xlabel(r'$\beta$(8.7,10.8)')
-                plt.ylabel(r'$\beta$(12.0,10.8)')
+                _name = name.replace("_"," ")
+                if _name == "SO2 Proxy":
+                    _name = "Low Lat"
+                plt.plot(x, y_conservative, 'r--', label=f'Conservative Beta Mask: {_name}')
+                plt.plot(x, y_liberal, 'b--', label=f'Liberal Beta Mask: {_name}')
+                if mode == "msg":
+                    plt.xlabel(r'$\beta$(8.7,10.8)')
+                    plt.ylabel(r'$\beta$(12.0,10.8)')
+                else:
+                    plt.xlabel(r'$\beta$(8.7,10.5)')
+                    plt.ylabel(r'$\beta$(12.3,10.5)')
                 plt.grid(True)
                 plt.xlim(0, 2.5)
                 plt.ylim(0, 2.5)
@@ -1112,7 +1186,10 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
                 plt.text(xlim[0] + 0.025*(xlim[1]-xlim[0]), ylim[0]+0.15*(ylim[1]-ylim[0]), plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
 
                 plt.legend()
-                plt.title(r'$\beta$ space '+mode.upper())
+                if name == "SO2_Proxy":
+                    plt.title(mode.upper() + r' $\beta$ space for pixels flagged with unique MSG detections')
+                else:
+                    plt.title(mode.upper() + r' $\beta$ space')
                 # Save plot
                 outname = f"beta_space_{mode}_{region.replace(" ","_")}_{timestr}_{name}.png"
                 plotpath = outdir+'/'+outname
@@ -1133,6 +1210,7 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
 
     plotbox=True
     plotX=True
+    plotmasked=True
 
     df_master = pd.read_csv(indir+'/'+master_csv_file)
 
@@ -1218,8 +1296,70 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
             timestr_mtg = mtgcsv.split("_")[1]
             timestr = timestr_msg + "_" + timestr_mtg
             if plotmsg:
+                if plotmasked:
+                    threshold = 0.10
+                    df_msg_det = df_msg[(df_msg['BTD2_conf'] <= -1.0) | (df_msg['VolcanicAsh_BTD3'] <= 1.5)]
+                    df_mtg_det = df_mtg[(df_mtg['BTD2_conf'] <= -1.0) | (df_mtg['VolcanicAsh_BTD3'] <= 1.5)]
+
+                    if df_msg_det.empty or df_mtg_det.empty:
+                        print(f"Skipping {conf_cut}, no detections")
+                        continue
+
+                    n_msg, n_mtg = len(df_msg_det), len(df_mtg_det)
+                    build_msg_tree = True if n_msg < n_mtg else False
+                    sat_tree, sat_search = ("MSG","MTG") if build_msg_tree else ("MTG","MSG")
+                    # Define the df used to build the tree as the smallest one to optimise speed (building the tree is O(n log n))
+                    df_tree, df_search = (df_msg_det, df_mtg_det) if build_msg_tree else (df_mtg_det, df_msg_det)
+                    coords_tree = tuple(zip(np.array(df_tree['Lat']), np.array(df_tree['Lon'])))
+                    coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
+                    msg_matches = []
+                    mtg_matches = []
+
+                    for coord in coords_search:
+                        tree = KDTree(coords_tree)
+                        distance, index = tree.query(coord)
+                        # A match is one where MSG is FAR AWAY FROM MTG, therefore >= rather than <
+                        if distance >= threshold:
+                            idx_tree = index
+                            idx_search = coords_search.index(coord)
+                            var_tree = df_tree.iloc[idx_tree]
+                            var_search = df_search.iloc[idx_search]
+                            # Always append MTG first
+                            if build_msg_tree:
+                                msg_matches.append(var_tree)
+                            else:
+                                msg_matches.append(var_search)
+
+                    df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
+                    df_msg_matches = df_msg_matches[((df_msg_matches['Lat'] > 13.) & (df_msg_matches['Lat'] < 14.)) & ((df_msg_matches['Lon'] > 40.) & (df_msg_matches['Lon'] < 45.))]
+
+                    # Filter the lat/lon region to speed up the search
+                    _df_mtg = df_mtg[((df_mtg['Lat'] > 13.) & (df_mtg['Lat'] < 14.)) & ((df_mtg['Lon'] > 40.) & (df_mtg['Lon'] < 45.))]
+                    df_tree, df_search = _df_mtg, df_msg_matches
+                    coords_tree = tuple(zip(np.array(df_tree['Lat']), np.array(df_tree['Lon'])))
+                    coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
+                    mtg_matches = []
+
+                    tree = KDTree(coords_tree)
+                    nearest_dist, nearest_ind = tree.query(coords_search, k=1)  # Change k=2 to k=1
+                    for iind, index in enumerate(nearest_ind):
+                        mtg_matches.append(df_tree.iloc[index])
+                        #print(f"Distance {nearest_dist[iind]} degrees")
+
+                    print(f"Nearest neighbour indices: {nearest_ind}")
+
+                    df_mtg_matches = pd.DataFrame(mtg_matches).reset_index(drop=True)
+
+                    lons_msg = np.array(df_msg_matches["Lon"])
+                    lats_msg = np.array(df_msg_matches["Lat"])
+                    lons_mtg = np.array(df_mtg_matches["Lon"])
+                    lats_mtg = np.array(df_mtg_matches["Lat"])
+
+                ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
                 ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
                 legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
+                legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
+
             if plotmtg:
                 ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
                 legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
