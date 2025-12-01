@@ -1287,129 +1287,199 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
             timestr_msg = msgcsv.split("_")[1]
             timestr_mtg = mtgcsv.split("_")[1]
             timestr = timestr_msg + "_" + timestr_mtg
-            if plotmsg:
-                if plotmasked:
-                    threshold = 0.10
-                    df_msg_det = df_msg[(df_msg['BTD2_conf'] <= -1.0) | (df_msg['VolcanicAsh_BTD3'] <= 1.5)]
-                    df_mtg_det = df_mtg[(df_mtg['BTD2_conf'] <= -1.0) | (df_mtg['VolcanicAsh_BTD3'] <= 1.5)]
 
-                    if df_msg_det.empty or df_mtg_det.empty:
-                        print(f"Skipping {conf_cut}, no detections")
-                        continue
+            if plotmasked:
+                threshold = 0.10
+                df_msg_det = df_msg[(df_msg['BTD2_conf'] <= -1.0) | (df_msg['VolcanicAsh_BTD3'] <= 1.5)]
+                df_mtg_det = df_mtg[(df_mtg['BTD2_conf'] <= -1.0) | (df_mtg['VolcanicAsh_BTD3'] <= 1.5)]
 
-                    n_msg, n_mtg = len(df_msg_det), len(df_mtg_det)
-                    build_msg_tree = True if n_msg < n_mtg else False
-                    sat_tree, sat_search = ("MSG","MTG") if build_msg_tree else ("MTG","MSG")
-                    # Define the df used to build the tree as the smallest one to optimise speed (building the tree is O(n log n))
-                    df_tree, df_search = (df_msg_det, df_mtg_det) if build_msg_tree else (df_mtg_det, df_msg_det)
-                    coords_tree = tuple(zip(np.array(df_tree['Lat']), np.array(df_tree['Lon'])))
-                    coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
-                    msg_matches = []
-                    mtg_matches = []
+                if df_msg_det.empty or df_mtg_det.empty:
+                    print(f"Skipping {conf_cut}, no detections")
+                    continue
 
-                    for coord in coords_search:
-                        tree = KDTree(coords_tree)
-                        distance, index = tree.query(coord)
-                        # A match is one where MSG is FAR AWAY FROM MTG, therefore >= rather than <
-                        if distance >= threshold:
-                            idx_tree = index
-                            idx_search = coords_search.index(coord)
-                            var_tree = df_tree.iloc[idx_tree]
-                            var_search = df_search.iloc[idx_search]
-                            # Always append MTG first
-                            if build_msg_tree:
-                                msg_matches.append(var_tree)
-                            else:
-                                msg_matches.append(var_search)
+                n_msg, n_mtg = len(df_msg_det), len(df_mtg_det)
+                build_msg_tree = True if n_msg < n_mtg else False
+                sat_tree, sat_search = ("MSG","MTG") if build_msg_tree else ("MTG","MSG")
+                # Define the df used to build the tree as the smallest one to optimise speed (building the tree is O(n log n))
+                df_tree, df_search = (df_msg_det, df_mtg_det) if build_msg_tree else (df_mtg_det, df_msg_det)
+                coords_tree = tuple(zip(np.array(df_tree['Lat']), np.array(df_tree['Lon'])))
+                coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
+                msg_matches = []
+                mtg_matches = []
 
-                    df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
-                    df_msg_matches = df_msg_matches[((df_msg_matches['Lat'] > 13.) & (df_msg_matches['Lat'] < 14.)) & ((df_msg_matches['Lon'] > 40.) & (df_msg_matches['Lon'] < 45.))]
-
-                    # Filter the lat/lon region to speed up the search
-                    _df_mtg = df_mtg[((df_mtg['Lat'] > 13.) & (df_mtg['Lat'] < 14.)) & ((df_mtg['Lon'] > 40.) & (df_mtg['Lon'] < 45.))]
-                    df_tree, df_search = _df_mtg, df_msg_matches
-                    coords_tree = tuple(zip(np.array(df_tree['Lat']), np.array(df_tree['Lon'])))
-                    coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
-                    mtg_matches = []
-
+                for coord in coords_search:
                     tree = KDTree(coords_tree)
-                    nearest_dist, nearest_ind = tree.query(coords_search, k=1)
-                    for iind, index in enumerate(nearest_ind):
-                        mtg_matches.append(df_tree.iloc[index])
-                        #print(f"Distance {nearest_dist[iind]} degrees")
+                    distance, index = tree.query(coord)
+                    # A match is one where MSG is FAR AWAY FROM MTG, therefore >= rather than <
+                    if distance >= threshold:
+                        idx_tree = index
+                        idx_search = coords_search.index(coord)
+                        var_tree = df_tree.iloc[idx_tree]
+                        var_search = df_search.iloc[idx_search]
+                        # Always append MTG first
+                        if build_msg_tree:
+                            msg_matches.append(var_tree)
+                        else:
+                            msg_matches.append(var_search)
 
-                    print(f"Nearest neighbour indices: {nearest_ind}")
+                df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
+                df_msg_matches = df_msg_matches[((df_msg_matches['Lat'] > 13.) & (df_msg_matches['Lat'] < 14.)) & ((df_msg_matches['Lon'] > 40.) & (df_msg_matches['Lon'] < 45.))]
 
-                    df_mtg_matches = pd.DataFrame(mtg_matches).reset_index(drop=True)
+                # Filter the lat/lon region to speed up the search
+                _df_mtg = df_mtg[((df_mtg['Lat'] > 13.) & (df_mtg['Lat'] < 14.)) & ((df_mtg['Lon'] > 40.) & (df_mtg['Lon'] < 45.))]
+                df_tree, df_search = _df_mtg, df_msg_matches
+                coords_tree = tuple(zip(np.array(df_tree['Lat']), np.array(df_tree['Lon'])))
+                coords_search = tuple(zip(np.array(df_search['Lat']), np.array(df_search['Lon'])))
+                mtg_matches = []
 
-                    lons_msg = np.array(df_msg_matches["Lon"])
-                    lats_msg = np.array(df_msg_matches["Lat"])
-                    lons_mtg = np.array(df_mtg_matches["Lon"])
-                    lats_mtg = np.array(df_mtg_matches["Lat"])
+                tree = KDTree(coords_tree)
+                nearest_dist, nearest_ind = tree.query(coords_search, k=1)
+                for iind, index in enumerate(nearest_ind):
+                    mtg_matches.append(df_tree.iloc[index])
+                    #print(f"Distance {nearest_dist[iind]} degrees")
 
-                    if plotBTD3:
-                        BTD3_msg = np.array(df_msg_matches["VolcanicAsh_BTD3"])
-                        BTD3_mtg = np.array(df_mtg_matches["VolcanicAsh_BTD3"])
-                         
-                        # Create 2D histogram
-                        x_bins = np.linspace(lons_msg.min(), lons_msg.max(), 50)
-                        y_bins = np.linspace(lats_msg.min(), lats_msg.max(), 20)
-                            
-                        # Create histogram
-                        H, xedges, yedges = np.histogram2d(lons_msg, lats_msg, bins=[x_bins, y_bins], weights=BTD3_msg)
-                            
-                        # Create meshgrid for pcolormesh
-                        X, Y = np.meshgrid(xedges, yedges)
+                print(f"Nearest neighbour indices: {nearest_ind}")
 
-                        # Plot
-                        ax = plt.axes(projection=ccrs.PlateCarree())
-                        gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
-                        gl.xlines = True   
-                        gl.bottom_labels = True
-                        gl.left_labels = True
-                        gl.xformatter = LONGITUDE_FORMATTER
-                        gl.yformatter = LATITUDE_FORMATTER
-                        gl.xlabel_style = {'size': 14} 
-                        gl.ylabel_style = {'size': 14}    
+                df_mtg_matches = pd.DataFrame(mtg_matches).reset_index(drop=True)
 
-                        # Determine the data range to center the colormap at zero
-                        vmin = H.T.min()
-                        vmax = H.T.max()
-                        # Make the color scale symmetric around zero
-                        vlim = max(abs(vmin), abs(vmax))
+                lons_msg = np.array(df_msg_matches["Lon"])
+                lats_msg = np.array(df_msg_matches["Lat"])
+                lons_mtg = np.array(df_mtg_matches["Lon"])
+                lats_mtg = np.array(df_mtg_matches["Lat"])
 
-                        pcm = ax.pcolormesh(
-                            X, Y, H.T,
-                            cmap='RdBu_r',
-                            shading='auto',
-                            transform=ccrs.PlateCarree(),
-                            norm=mcolors.TwoSlopeNorm(vmin=-vlim, vcenter=0, vmax=vlim)
-                        )
+                if plotBTD3:
+                    BTD3_msg = np.array(df_msg_matches["VolcanicAsh_BTD3"])
+                    BTD3_mtg = np.array(df_mtg_matches["VolcanicAsh_BTD3"])
+                     
+                    # Create 2D histogram
+                    x_bins = np.linspace(lons_msg.min(), lons_msg.max(), 50)
+                    y_bins = np.linspace(lats_msg.min(), lats_msg.max(), 20)
+                        
+                    # Create histogram
+                    H_msg, xedges_msg, yedges_msg = np.histogram2d(lons_msg, lats_msg, bins=[x_bins, y_bins], weights=BTD3_msg)
+                    H_mtg, xedges_mtg, yedges_mtg = np.histogram2d(lons_mtg, lats_mtg, bins=[x_bins, y_bins], weights=BTD3_mtg)
 
-                        plt.colorbar(pcm, label='BTD3 Value')
-                        plt.title(f'{} BTD3 Values')
-                        ax.coastlines()
-                        plt.xlim(lon_range[0], lon_range[1])
-                        plt.ylim(lat_range[0], lat_range[1])
-                        plt.show()
+                    # Mask zero bins
+                    H_msg = np.ma.masked_where(H_msg == 0., H_msg)
+                    H_mtg = np.ma.masked_where(H_mtg == 0., H_mtg)
+                        
+                    # Create meshgrid for pcolormesh
+                    X_msg, Y_msg = np.meshgrid(xedges_msg, yedges_msg)
+                    X_mtg, Y_mtg = np.meshgrid(xedges_mtg, yedges_mtg)
 
+                    # Plot MSG
+                    ax = plt.axes(projection=ccrs.PlateCarree())
+                    gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
+                    gl.xlines = True   
+                    gl.bottom_labels = True
+                    gl.left_labels = True
+                    gl.xformatter = LONGITUDE_FORMATTER
+                    gl.yformatter = LATITUDE_FORMATTER
+                    gl.xlabel_style = {'size': 14} 
+                    gl.ylabel_style = {'size': 14}    
 
-            ax = plt.axes(projection=ccrs.PlateCarree())
-            gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
-            gl.xlines = True   
-            gl.bottom_labels = True
-            gl.left_labels = True
-            gl.xformatter = LONGITUDE_FORMATTER
-            gl.yformatter = LATITUDE_FORMATTER
-            gl.xlabel_style = {'size': 14} 
-            gl.ylabel_style = {'size': 14}    
+                    colors_lowbtd = mcolors.LinearSegmentedColormap.from_list('lowbtd', ['red','yellow'])(np.linspace(0, 1, 256))
+                    colors_highbtd = plt.cm.Blues(np.linspace(0, 1, 256))
 
-            ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
-            ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
-            legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
-            legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
+                    colors_btd = np.vstack((colors_lowbtd, colors_highbtd))
+                    btd_map = mcolors.LinearSegmentedColormap.from_list('btd_map', colors_btd)
+                    btd_map.set_bad(alpha=0)
+                    divnorm = mcolors.TwoSlopeNorm(vmin=-5., vcenter=1.5, vmax=5.)
 
-            if plotmtg:
+                    # Determine the data range to center the colormap at zero
+                    vmin = H_msg.T.min()
+                    vmax = H_msg.T.max()
+                    # Make the color scale symmetric around zero
+                    vlim = max(abs(vmin), abs(vmax))
+
+                    pcm = ax.pcolormesh(
+                        X_msg, Y_msg, H_msg.T,
+                        cmap=btd_map,
+                        shading='auto',
+                        transform=ccrs.PlateCarree(),
+                        norm=divnorm
+                    )
+
+                    lonmin_msg, lonmax_msg = lons_msg.min(), lons_msg.max()
+                    latmin_msg, latmax_msg = lats_msg.min(), lats_msg.max()
+                    londiff_msg = abs(lonmax_msg - lonmin_msg)
+                    latdiff_msg = abs(latmax_msg - latmin_msg)
+
+                    lonmin_mtg, lonmax_mtg = lons_mtg.min(), lons_mtg.max()
+                    latmin_mtg, latmax_mtg = lats_mtg.min(), lats_mtg.max()
+                    londiff_mtg = abs(lonmax_mtg - lonmin_mtg)
+                    latdiff_mtg = abs(latmax_mtg - latmin_mtg)
+
+                    plt.colorbar(pcm, label='BTD3 Value')
+                    plt.title(f'MSG BTD3 Values')
+                    ax.coastlines()
+                    plt.xlim(lonmin_msg - londiff_msg*0.5, lonmax_msg + londiff_msg*0.5)
+                    plt.ylim(latmin_msg - latdiff_msg*0.5, latmax_msg + latdiff_msg*0.5)
+                    plt.savefig(outdir+'/'+f"MSG_BTD3_map_{timestr_msg}.png")
+                    plt.show()
+                    plt.close()
+
+                    # Plot MTG
+                    ax = plt.axes(projection=ccrs.PlateCarree())
+                    gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
+                    gl.xlines = True   
+                    gl.bottom_labels = True
+                    gl.left_labels = True
+                    gl.xformatter = LONGITUDE_FORMATTER
+                    gl.yformatter = LATITUDE_FORMATTER
+                    gl.xlabel_style = {'size': 14} 
+                    gl.ylabel_style = {'size': 14}    
+
+                    # Determine the data range to center the colormap at zero
+                    vmin = H_mtg.T.min()
+                    vmax = H_mtg.T.max()
+                    # Make the color scale symmetric around zero
+                    vlim = max(abs(vmin), abs(vmax))
+
+                    #pcm = ax.pcolormesh(
+                    #    X_mtg, Y_mtg, H_mtg.T,
+                    #    cmap='RdBu_r',
+                    #    transform=ccrs.PlateCarree(),
+                    #    norm=mcolors.TwoSlopeNorm(vmin=-vlim, vcenter=0, vmax=vlim)
+                    #)
+
+                    pcm = ax.pcolormesh(
+                        X_mtg, Y_mtg, H_mtg.T,
+                        cmap=btd_map,
+                        shading='auto',
+                        transform=ccrs.PlateCarree(),
+                        norm=divnorm
+                    )
+
+                    plt.colorbar(pcm, label='BTD3 Value')
+                    plt.title(f'MTG BTD3 Values')
+                    ax.coastlines()
+                    plt.xlim(lonmin_mtg - londiff_mtg*0.5, lonmax_mtg + londiff_mtg*0.5)
+                    plt.ylim(latmin_mtg - latdiff_mtg*0.5, latmax_mtg + latdiff_mtg*0.5)
+                    plt.savefig(outdir+'/'+f"MTG_BTD3_map_{timestr_mtg}.png")
+                    plt.show()
+                    plt.close()
+
+                ax = plt.axes(projection=ccrs.PlateCarree())
+                gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
+                gl.xlines = True   
+                gl.bottom_labels = True
+                gl.left_labels = True
+                gl.xformatter = LONGITUDE_FORMATTER
+                gl.yformatter = LATITUDE_FORMATTER
+                gl.xlabel_style = {'size': 14} 
+                gl.ylabel_style = {'size': 14}    
+
+                ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
+                ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
+                legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
+                legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
+
+            if plotmsg and not plotmasked:
+                ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
+                legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
+
+            if plotmtg and not plotmasked:
                 ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
                 legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
 
