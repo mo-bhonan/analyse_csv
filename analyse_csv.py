@@ -10,6 +10,7 @@ from scipy.spatial import KDTree
 from enum import Enum
 from collections import Counter
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+import matplotlib.colors as mcolors
 
 savesvgpdf = False
 
@@ -1147,7 +1148,7 @@ def plot_beta_masks(indir, outdir, master_csv_file, plotmode='msg_mtg', show_plo
                 plt.xlim(0, 2.5)
                 plt.ylim(0, 2.5)
 
-                # Create a 2D histogram (density map) for MTG and MSG beta values
+                # Create a 2D histogram for MTG and MSG beta values
                 x_bins = np.linspace(0, 2.5, 100)
                 y_bins = np.linspace(0, 2.5, 100)
                 if mode == 'msg':
@@ -1211,6 +1212,7 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
     plotbox=True
     plotX=True
     plotmasked=True
+    plotBTD3=True
 
     df_master = pd.read_csv(indir+'/'+master_csv_file)
 
@@ -1230,7 +1232,6 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
             lat_range = (float(latlonlist[0]),float(latlonlist[1]))
             lon_range = (float(latlonlist[2]),float(latlonlist[3]))
 
-            ax = plt.axes(projection=ccrs.PlateCarree())
             passed_str = ""
             legend_elements = []
             mtgpath, msgpath = indir+'/'+mtgcsv, indir+'/'+msgcsv
@@ -1282,15 +1283,6 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
                 lons_mtg = np.array(df_mtg["Lon"])
                 lats_mtg = np.array(df_mtg["Lat"])
 
-            gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
-            gl.xlines = True   
-            gl.bottom_labels = True
-            gl.left_labels = True
-            gl.xformatter = LONGITUDE_FORMATTER
-            gl.yformatter = LATITUDE_FORMATTER
-            gl.xlabel_style = {'size': 14} 
-            gl.ylabel_style = {'size': 14}    
-
             # Assume time string is same for MSG and MTG. TODO: Could add error catching to make sure this is true
             timestr_msg = msgcsv.split("_")[1]
             timestr_mtg = mtgcsv.split("_")[1]
@@ -1341,7 +1333,7 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
                     mtg_matches = []
 
                     tree = KDTree(coords_tree)
-                    nearest_dist, nearest_ind = tree.query(coords_search, k=1)  # Change k=2 to k=1
+                    nearest_dist, nearest_ind = tree.query(coords_search, k=1)
                     for iind, index in enumerate(nearest_ind):
                         mtg_matches.append(df_tree.iloc[index])
                         #print(f"Distance {nearest_dist[iind]} degrees")
@@ -1355,10 +1347,67 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
                     lons_mtg = np.array(df_mtg_matches["Lon"])
                     lats_mtg = np.array(df_mtg_matches["Lat"])
 
-                ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
-                ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
-                legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
-                legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
+                    if plotBTD3:
+                        BTD3_msg = np.array(df_msg_matches["VolcanicAsh_BTD3"])
+                        BTD3_mtg = np.array(df_mtg_matches["VolcanicAsh_BTD3"])
+                         
+                        # Create 2D histogram
+                        x_bins = np.linspace(lons_msg.min(), lons_msg.max(), 50)
+                        y_bins = np.linspace(lats_msg.min(), lats_msg.max(), 20)
+                            
+                        # Create histogram
+                        H, xedges, yedges = np.histogram2d(lons_msg, lats_msg, bins=[x_bins, y_bins], weights=BTD3_msg)
+                            
+                        # Create meshgrid for pcolormesh
+                        X, Y = np.meshgrid(xedges, yedges)
+
+                        # Plot
+                        ax = plt.axes(projection=ccrs.PlateCarree())
+                        gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
+                        gl.xlines = True   
+                        gl.bottom_labels = True
+                        gl.left_labels = True
+                        gl.xformatter = LONGITUDE_FORMATTER
+                        gl.yformatter = LATITUDE_FORMATTER
+                        gl.xlabel_style = {'size': 14} 
+                        gl.ylabel_style = {'size': 14}    
+
+                        # Determine the data range to center the colormap at zero
+                        vmin = H.T.min()
+                        vmax = H.T.max()
+                        # Make the color scale symmetric around zero
+                        vlim = max(abs(vmin), abs(vmax))
+
+                        pcm = ax.pcolormesh(
+                            X, Y, H.T,
+                            cmap='RdBu_r',
+                            shading='auto',
+                            transform=ccrs.PlateCarree(),
+                            norm=mcolors.TwoSlopeNorm(vmin=-vlim, vcenter=0, vmax=vlim)
+                        )
+
+                        plt.colorbar(pcm, label='BTD3 Value')
+                        plt.title(f'{} BTD3 Values')
+                        ax.coastlines()
+                        plt.xlim(lon_range[0], lon_range[1])
+                        plt.ylim(lat_range[0], lat_range[1])
+                        plt.show()
+
+
+            ax = plt.axes(projection=ccrs.PlateCarree())
+            gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
+            gl.xlines = True   
+            gl.bottom_labels = True
+            gl.left_labels = True
+            gl.xformatter = LONGITUDE_FORMATTER
+            gl.yformatter = LATITUDE_FORMATTER
+            gl.xlabel_style = {'size': 14} 
+            gl.ylabel_style = {'size': 14}    
+
+            ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
+            ax.scatter(lons_msg, lats_msg, s=1, alpha=0.5, color='blue')
+            legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
+            legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
 
             if plotmtg:
                 ax.scatter(lons_mtg, lats_mtg, s=1, alpha=0.5, color='red')
@@ -1377,7 +1426,7 @@ def plot_latlon_points(indir, outdir, master_csv_file, plotonly="", show_plots=F
                     linewidth=2,
                     edgecolor='black',
                     facecolor='none',
-                    linestyle='--',
+                    linestyle='-',
                     transform=ccrs.PlateCarree()
                 )
                 ax.add_patch(rect)
