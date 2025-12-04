@@ -45,6 +45,9 @@ class Dataset:
         self.latmin_mtg = None
         self.latmax_mtg = None
 
+        self.n_msg = None
+        self.n_mtg = None
+
     def _load(self):
         self.data_msg = pd.read_csv(self.file_path_msg)
         self.data_mtg = pd.read_csv(self.file_path_mtg)
@@ -72,6 +75,9 @@ class Dataset:
         self.latmin_mtg = self.lats_mtg.min()
         self.latmax_mtg = self.lats_mtg.max()
 
+        self.n_msg = len(self.data_msg)
+        self.n_mtg = len(self.data_mtg)
+
     def _unload(self):
         # Release memory by clearing references
         self.data_msg = None
@@ -92,6 +98,8 @@ class Dataset:
         self.lonmax_mtg = None
         self.latmin_mtg = None
         self.latmax_mtg = None
+        self.n_msg = None
+        self.n_mtg = None
 
         # Optionally call gc.collect() under heavy memory pressure
         # gc.collect()
