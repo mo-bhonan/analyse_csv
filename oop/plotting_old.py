@@ -5,32 +5,88 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import pandas as pd
 import config
 import filters
-import gc
-import io
-from dataset import Dataset
+
+class Dataset:
+
+    '''
+    Usage:
+
+    for dataset in self.iter_loaded():
+        df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
+        meta = dataset.metadata
+        region = meta['region']
+        ...
+
+    '''
+
+    def __init__(self, file_path_msg, file_path_mtg, metadata):
+        self.file_path_msg = file_path_msg
+        self.file_path_mtg = file_path_mtg
+        self.metadata = metadata
+        self.metadata.update({'time_msg':self.file_path_msg.split("_")[1]})
+        self.metadata.update({'time_mtg':self.file_path_mtg.split("_")[1]})
+        self.data_msg = None  # Lazy load
+        self.data_mtg = None 
+        self.lons_msg = None 
+        self.lats_msg = None
+        self.lons_mtg = None
+        self.lats_mtg = None
+        self.latmin_msg = -90.
+        self.latmax_msg = 90.
+        self.latmin_mtg = -90.
+        self.latmax_mtg = 90.
+        self.lonmin_msg = -90.
+        self.lonmax_msg = 90.
+        self.lonmin_mtg = -90.
+        self.lonmax_mtg = 90.
+
+    def _load(self):
+        self.data_msg = pd.read_csv(self.file_path_msg)
+        self.data_mtg = pd.read_csv(self.file_path_mtg)
+        self.lons_msg = np.array(self.data_msg["Lon"])
+        self.lats_msg = np.array(self.data_msg["Lat"])
+        self.lons_mtg = np.array(self.data_mtg["Lon"])
+        self.lats_mtg = np.array(self.data_mtg["Lat"])
+        self.lonmin_msg = self.lons_msg.min()
+        self.lonmax_msg = self.lons_msg.max()
+        self.lonmin_mtg = self.lons_mtg.min()
+        self.lonmax_mtg = self.lons_mtg.max()
+        self.latmin_msg = self.lats_msg.min()
+        self.latmax_msg = self.lats_msg.max()
+        self.latmin_mtg = self.lats_mtg.min()
+        self.latmax_mtg = self.lats_mtg.max()
+
+    def _unload(self):
+        # Release memory by clearing the DataFrame reference
+        self.data_msg = None
+        self.data_mtg = None
+        self.lons_msg = None
+        self.lats_msg = None
+        self.lons_mtg = None
+        self.lats_mtg = None
+        gc.collect()  # Encourage garbage collection for large objects
 
 class Plotter:
     def __init__(self, indir, outdir, master_csv):
-        self.indir = Path(indir)
-        self.outdir = Path(outdir)
-        self.outdir_matches = self.indir / "matches" 
-        self.outdir_matches.mkdir(parents=True, exist_ok=True)
-
+        self.indir = indir
+        self.outdir = outdir
+        self.outdir_matches = self.indir+"/matches/"
         df = pd.read_csv(master_csv)
-        self.datasets = [Dataset(row.to_dict()) for _, row in df.iterrows()]
+        self.datasets = [
+            Dataset(row['csv_msg'], row['csv_mtg'], row.to_dict()) for _, row in df.iterrows()
+        ]
 
     def iter_loaded(self):
         """
-        Generator that yields each Dataset after loading.
-        Automatically unloads the previous dataset when moving to the next
-        (or if the caller raises/breaks).
+        Generator function that yields each Dataset object after loading its data.
+        Automatically unloads the previous dataset when moving to the next.
         """
         for ds in self.datasets:
-            ds._load()
+            ds._load()  # Load data into ds.data
             try:
-                yield ds
+                yield ds  # Yield the Dataset object 
             finally:
-                ds._unload()
+                ds._unload()  # Ensure cleanup happens every iteration
 
     def new_geo_axes(self):
         ax = plt.axes(projection=ccrs.PlateCarree())
@@ -47,10 +103,8 @@ class Plotter:
 
     def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_output_csv, output_txt=False, threshold=0.01):
 
-        for dataset in plotter.iter_loaded():
-            # df_msg, df_mtg will go out of scope at the end of each iteration, so there won't be a memory leak.
-            # They point to the same dataframe as dataset.data_msg and dataset.data_mtg
-            df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
+        for dataset in self.datasets:
+            df_msg, df_mtg = dataset.load_data()
             meta = dataset.metadata
             cutstr = config.getcutstr(meta['conf_cut'])
 
