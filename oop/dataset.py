@@ -49,6 +49,10 @@ class Dataset:
         self.latmin_mtg = None
         self.latmax_mtg = None
 
+        self.latstr = None
+        self.lonstr = None
+        self.latlonstr = None
+
         self.n_msg = None
         self.n_mtg = None
 
@@ -79,6 +83,10 @@ class Dataset:
         self.latmin_mtg = self.lats_mtg.min()
         self.latmax_mtg = self.lats_mtg.max()
 
+        self.latstr = '('+str(round(lat_min,1))+','+str(round(lat_max,1))+')'
+        self.lonstr = '('+str(round(lon_min,1))+','+str(round(lon_max,1))+')'
+        self.latlonstr=f"Lat/Lon: {latstr}/{lonstr}"
+
         self.n_msg = len(self.data_msg)
         self.n_mtg = len(self.data_mtg)
 
@@ -104,6 +112,9 @@ class Dataset:
         self.latmax_mtg = None
         self.n_msg = None
         self.n_mtg = None
+        self.latstr = None
+        self.lonstr = None
+        self.latlonstr = None
 
         # Optionally call gc.collect() under heavy memory pressure
         # gc.collect()

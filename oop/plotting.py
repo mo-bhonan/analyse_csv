@@ -9,20 +9,15 @@ import filters
 import gc
 import nn
 from dataset import Dataset
+from collections import Counter
 
 class Plotter:
     def __init__(self, indir, outdir, master_csv):
         self.indir = Path(indir)
         self.outdir = Path(outdir)
-        self.matches_dir = self.indir / "matches" 
-        self.matches_dir.mkdir(parents=True, exist_ok=True)
 
         df = pd.read_csv(master_csv)
         self.datasets = [Dataset(row.to_dict()) for _, row in df.iterrows()]
-
-    def resolve_path(self, path):
-        p = Path(p)
-        return p if p.is_absolute() else (self.indir / path)
 
     def iter_loaded(self):
         """
@@ -58,9 +53,18 @@ class Plotter:
         gl.ylabel_style = {'size': 14}    
         return ax
 
-    #def plot_nearestneighbors(self, recreate_csv, write_output_matches=True, show_plots=False):
-    def get_matches_and_codes(indir, file_msg, file_mtg, write_output_matches, f_output_csv, output_txt=False, threshold=0.01):
+    def save_plots(self, outname, savesvgpdf=False):
+        outname = Path(outname).stem
+        extensions = ['.png']
+        if savesvgpdf:
+            extensions += ['.pdf', '.svg']
+        
+        for ext in extensions:
+            plotpath = self.outdir / Path(outname+ext)
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+            print(f"Plot saved to: {plot_path}")
 
+    def plot_nearestneighbors(self, recreate_csv, show_plots=False, plot_histograms=True):
         for dataset in plotter.iter_loaded():
             # df_msg, df_mtg will go out of scope at the end of each iteration, so there won't be a memory leak.
             # They point to the same dataframe as dataset.data_msg and dataset.data_mtg
@@ -68,8 +72,10 @@ class Plotter:
             meta = dataset.metadata
             cutstr = config.getcutstr(meta['conf_cut'])
             # if not reading the nn csv from file
-            if not os.path.exists(f_output_csv) or recreate_csv:
-                f_output_csv = f"{self.matches_dir}/{dataset.filepath_msg.split('.csv')[0]}_{dataset.filepath_mtg.split('.csv')[0]}_matches_nn.csv"
+            matches_dir = self.indir / Path("matches")
+            matches_dir.mkdir(parents=True, exist_ok=True)
+            path_output_csv = matches_dir / Path(f"{dataset.filepath_msg.split('.csv')[0]}_{dataset.filepath_mtg.split('.csv')[0]}_matches_nn.csv")
+            if not path_output_csv.exists() or recreate_csv:
 
                 retrievalcodes = []
                 msg_matches = []
@@ -96,7 +102,7 @@ class Plotter:
                     raise ValueError("Length of retrievalcodes list not equal to list of nearest-neighbour MSG matches")
                 df_msg_matches['retrieval_code'] = pd.Series(retrievalcodes)
 
-                if not df_msg_matches.empty and write_output_matches:
+                if not df_msg_matches.empty:
                     df_mtg_matches = pd.DataFrame(mtg_matches).reset_index(drop=True)
                     df_msg_matches['MTG_BTD2_conf'] = df_mtg_matches['BTD2_conf']
                     df_msg_matches['MTG_PreFilter_VA_Confidence'] = df_mtg_matches['PreFilter_VA_Confidence']
@@ -138,101 +144,75 @@ class Plotter:
                     )
 
             # Save the plot before showing
-            outname = f"{region.replace(" ","_")}_{timestr}_detection_type_map.png"
-            plot_path = outdir + "/" + outname
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-            if savesvgpdf:
-                plt.savefig(plot_path.replace("png","svg"), dpi=300, bbox_inches='tight')
-                plt.savefig(plot_path.replace("png","pdf"), dpi=300, bbox_inches='tight')
-            print(f"Plot saved to: {plot_path}")
+            outname = f"{region.replace(" ","_")}_{meta['time_msg']}_detection_type_map"
+            self.save_plots(outname)
             if show_plots:
                 plt.show()
             plt.close()
 
-            # Convert codes to strings if they are enums
-            code_strings = [retrieval_code_labels.get(RetrievalCode(code.split('.')[-1].lower()), str(code)) if read_from_file else retrieval_code_labels.get(code, str(code)) for code in codes.values]
+            if plot_histograms:
+                # Count occurrences of each code
+                code_counts = Counter(codes)
 
-            # Count occurrences of each code
-            code_counts = Counter(code_strings)
+                # Sort by frequency (descending)
+                sorted_items = sorted(code_counts.items(), key=lambda x: x[1], reverse=True)
+                labels = [item[0] for item in sorted_items]
+                counts = [item[1] for item in sorted_items]
 
-            # Sort by frequency (descending)
-            sorted_items = sorted(code_counts.items(), key=lambda x: x[1], reverse=True)
-            labels = [item[0] for item in sorted_items]
-            counts = [item[1] for item in sorted_items]
+                # Assign integer indices to each label
+                indices = list(range(1, len(labels)+1))
 
-            # Assign integer indices to each label
-            indices = list(range(1, len(labels)+1))
+                plt.figure()
+                bars = plt.bar(indices, counts)
+                plt.xticks(indices)  # x-axis ticks are integers
 
-            plt.figure()
-            bars = plt.bar(indices, counts)
-            plt.xticks(indices)  # x-axis ticks are integers
+                xlim = plt.gca().get_xlim()
+                ylim = plt.gca().get_ylim()
 
-            #TODO: Reconstructing dfs for this not very nice. Ideally would combine all common things amongst plotting functions into a plotting object instance.
-            msgpath = indir+'/'+msgcsv
-            df_msg = pd.read_csv(msgpath)
-            lons_msg = np.array(df_msg["Lon"])
-            lats_msg = np.array(df_msg["Lat"])
-            lon_min = np.min(lons_msg, initial=100.)
-            lon_max = np.max(lons_msg, initial=-100.)
-            lat_min = np.min(lats_msg, initial=100.)
-            lat_max = np.max(lats_msg, initial=-100.)
-            latstr = '('+str(round(lat_min,1))+','+str(round(lat_max,1))+')'
-            lonstr = '('+str(round(lon_min,1))+','+str(round(lon_max,1))+')'
-            latlonstr=f"Lat/Lon: {latstr}/{lonstr}"
+                plt.ylabel("Count")
+                plt.xlabel("Detection Type")
+                plt.title("Detection Type Frequency")
+                plt.tight_layout()
+                ylim = plt.gca().get_ylim()
+                plt.ylim(ylim[0], ylim[1] * 1.30)
 
-            xlim = plt.gca().get_xlim()
-            ylim = plt.gca().get_ylim()
+                # Annotate each bar with its count value
+                for bar, count in zip(bars, counts):
+                    plt.text(
+                        bar.get_x() + bar.get_width() / 2,
+                        bar.get_height(),
+                        str(count),
+                        ha='center',
+                        va='bottom',
+                        fontsize=9
+                    )
 
-            plt.ylabel("Count")
-            plt.xlabel("Detection Type")
-            plt.title("Detection Type Frequency")
-            plt.tight_layout()
-            ylim = plt.gca().get_ylim()
-            plt.ylim(ylim[0], ylim[1] * 1.30)
+                # Create legend mapping integers to labels, matching bar colors
+                legend_handles = [
+                    Patch(facecolor=bar.get_facecolor(), label=f"{i}: {label}")
+                    for i, label, bar in zip(indices, labels, bars)
+                ]
+                plt.legend(handles=legend_handles, title="Detection Type", fontsize='small', loc='upper right')
 
-            # Annotate each bar with its count value
-            for bar, count in zip(bars, counts):
+                # Get the bounding box of the legend in display coordinates
+                bbox = plt.gca().get_legend().get_window_extent()
+                # Transform to axes coordinates
+                ax = plt.gca()
+                inv = ax.transAxes.inverted()
+                bbox_ax = inv.transform(bbox)
+                # Place the text just below the legend
+                x_text = bbox_ax[0][0]  # left of legend
+                y_text = bbox_ax[0][1] - 0.05  # slightly below legend
                 plt.text(
-                    bar.get_x() + bar.get_width() / 2,
-                    bar.get_height(),
-                    str(count),
-                    ha='center',
-                    va='bottom',
-                    fontsize=9
+                x_text, y_text,
+                f"{dataset.latlonstr}\nRegion: {meta['region']}\n{cutstr}\nTime: {meta['time_msg']}",
+                ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'),
+                transform=ax.transAxes
                 )
 
-            # Create legend mapping integers to labels, matching bar colors
-            legend_handles = [
-                Patch(facecolor=bar.get_facecolor(), label=f"{i}: {label}")
-                for i, label, bar in zip(indices, labels, bars)
-            ]
-            plt.legend(handles=legend_handles, title="Detection Type", fontsize='small', loc='upper right')
-
-            # Get the bounding box of the legend in display coordinates
-            bbox = plt.gca().get_legend().get_window_extent()
-            # Transform to axes coordinates
-            ax = plt.gca()
-            inv = ax.transAxes.inverted()
-            bbox_ax = inv.transform(bbox)
-            # Place the text just below the legend
-            x_text = bbox_ax[0][0]  # left of legend
-            y_text = bbox_ax[0][1] - 0.05  # slightly below legend
-            plt.text(
-            x_text, y_text,
-            f"{latlonstr}\nRegion: {region}\n{cut_str}\nTime: {timestr}",
-            ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'),
-            transform=ax.transAxes
-            )
-
-            outname = f"{region.replace(" ","_")}_{timestr}_detection_type_histogram.png"
-            plot_path = outdir + "/" + outname
-            print(f"Plot saved to: {plot_path}")
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-            if savesvgpdf:
-                plt.savefig(plot_path.replace("png","svg"), bbox_inches='tight')
-                plt.savefig(plot_path.replace("png","pdf"), bbox_inches='tight')
-            if show_plots:
-                plt.show()
-            plt.close()
-
+                outname = f"{region.replace(" ","_")}_{timestr}_detection_type_histogram"
+                self.save_plots(outname)
+                if show_plots:
+                    plt.show()
+                plt.close()
 
