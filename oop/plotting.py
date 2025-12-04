@@ -96,9 +96,6 @@ class Plotter:
                 else:
                     df_mtg = filters.apply_constraints(df_mtg, constraints)
                     
-            coords_msg = tuple(zip(np.array(df_msg['Lat']), np.array(df_msg['Lon'])))
-            coords_mtg = tuple(zip(np.array(df_mtg['Lat']), np.array(df_mtg['Lon'])))
-
             n_msg, n_mtg = len(df_msg), len(df_mtg)
             build_msg_tree = True if n_msg < n_mtg else False
             sat_tree, sat_search = ("MSG","MTG") if build_msg_tree else ("MTG","MSG")

@@ -1,9 +1,6 @@
 import numpy as np
 from scipy.spatial import KDTree
 
-def coords_from_df(df):
-    return tuple(zip(np.array(df['Lat']), np.array(df['Lon'])))
-
 def nearest_neighbors(df_tree, df_search, k=1):
     coords_tree = coords_from_df(df_tree)
     coords_search = coords_from_df(df_search)
