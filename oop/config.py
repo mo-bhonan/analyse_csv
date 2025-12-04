@@ -18,6 +18,7 @@ OP_MAP = {'==': op.eq, '!=': op.ne, '>': op.gt, '<': op.lt, '>=': op.ge, '<=': o
 OP_MAP_STR = {'==':'eq','!=':'ne','>':'gt','<':'lt','>=':'ge','<=':'le'}
 VAR_MAP = {'medva': 'Median_VA_Confidence'}
 
+codes_to_ignore = ["noret"]
 RETRIEVAL_CODE_LABELS = {
     "conf7_c1": "MTG Conf 7, MSG Conf 0 fails: C1 Threshold",
     "conf7_other": "MTG Conf 7, MSG Conf 0 fails: Other",

@@ -21,8 +21,12 @@ class Dataset:
         self.file_path_mtg = io.resolve_path(self.metadata.get("csv_mtg"))
 
         # Derive times safely
-        self.metadata['time_msg'] = io.derive_time_from_path(self.file_path_msg)
-        self.metadata['time_mtg'] = io.derive_time_from_path(self.file_path_mtg)
+        self.metadata['time_msg'] = self.derive_time_from_path(self.file_path_msg)
+        self.metadata['time_mtg'] = self.derive_time_from_path(self.file_path_mtg)
+
+        latlonlist = self.metadata['latlon'].split("_")
+        self.lon_range = (float(latlonlist[2]),float(latlonlist[3]))
+        self.lat_range = (float(latlonlist[0]),float(latlonlist[1]))
 
         # Data holders (lazy-loaded)
         self.data_msg = None
@@ -103,4 +107,11 @@ class Dataset:
 
         # Optionally call gc.collect() under heavy memory pressure
         # gc.collect()
+
+    def _derive_time_from_path(self, path: Path):
+        # Safer than split("_")[1]; customize to your naming convention
+        # Example: "prefix_20250101_suffix.csv" -> "20250101"
+        parts = path.stem.split("_")
+        return parts[1] if len(parts) > 1 else None
+
 
