@@ -1,3 +1,4 @@
+import operator as op
 
 def getcutstr(conf_cut):
     '''
@@ -10,7 +11,7 @@ def getcutstr(conf_cut):
     l_conf_cut[1] = VAR_MAP[l_conf_cut[1]]
     if l_conf_cut[2] not in OP_MAP:
         raise ValueError(f"Invalid cutstr. Third element of string must correpond to an operator. Got {l_conf_cut[2]}.")
-    cut_str = " ".join(conf_cut)
+    cut_str = " ".join(l_conf_cut)
     return cut_str
 
 # ...existing code...
@@ -40,10 +41,10 @@ RETRIEVAL_CODE_LABELS = {
     "conf3_other": "MTG Conf 3, MSG Conf 0 fails: Other",
     "conf1_c3_libmask ": "MTG Conf 1, MSG Conf 0 fails: C3, Liberal Mask",
     "conf1_c4_libmask ": "MTG Conf 1, MSG Conf 0 fails: C4, Liberal Mask",
-    "conf1_c4 ": "MTG Conf 1, MSG Conf 0 fails: C4 Threshold",
-    "conf1_c3 ": "MTG Conf 1, MSG Conf 0 fails: C3 Threshold",
-    "conf1_libmask ": "MTG Conf 1, MSG Conf 0 fails: Liberal Mask",
-    "conf1_other ": "MTG Conf 1, MSG Conf 0 fails: Other",
+    "conf1_c4": "MTG Conf 1, MSG Conf 0 fails: C4 Threshold",
+    "conf1_c3": "MTG Conf 1, MSG Conf 0 fails: C3 Threshold",
+    "conf1_libmask": "MTG Conf 1, MSG Conf 0 fails: Liberal Mask",
+    "conf1_other": "MTG Conf 1, MSG Conf 0 fails: Other",
     "conf7_c1_msgconf1": "MTG Conf 7, MSG Conf 1 fails: C1 Threshold",
     "conf7_other_msgconf1": "MTG Conf 7, MSG Conf 1 fails: Other",
     "conf4_conmask_msgconf1": "MTG Conf 4, MSG Conf 1 fails: Conservative Mask",
@@ -63,11 +64,13 @@ RETRIEVAL_CODE_LABELS = {
     "conf3_c3_msgconf1": "MTG Conf 3, MSG Conf 1 fails: C3",
     "conf3_other_msgconf1": "MTG Conf 3, MSG Conf 1 fails: Other",
     "conf1_msgconf1": "MTG Conf 1, MSG Conf 1",
+    "conf1_msgconf4": "MTG Conf 1, MSG Conf 4",
     "conf4_msgconf4": "MTG Conf 4, MSG Conf 4",
     "conf7_msgconf7": "MTG Conf 7, MSG Conf 7",
     "conf3_msgconf3": "MTG Conf 3, MSG Conf 3",
     "conf3_msgconf4": "MTG Conf 3, MSG Conf 4",
     "conf6_msgconf3": "MTG Conf 6, MSG Conf 3",
+    "conf2_msgconf4": "MSG Conf 4, MTG Conf 2",
     "conf4_c4_conmask_msgconf2": "MTG Conf 4, MSG Conf 2 fails: C4 & Con Mask",
 }
 

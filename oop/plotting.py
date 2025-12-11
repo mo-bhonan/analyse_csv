@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from matplotlib.patches import Rectangle, Patch
@@ -6,18 +7,20 @@ import pandas as pd
 from pathlib import Path
 import config
 import filters
+import retrieval
 import gc
 import nn
 from dataset import Dataset
 from collections import Counter
+import io
 
 class Plotter:
     def __init__(self, indir, outdir, master_csv):
         self.indir = Path(indir)
         self.outdir = Path(outdir)
 
-        df = pd.read_csv(master_csv)
-        self.datasets = [Dataset(row.to_dict()) for _, row in df.iterrows()]
+        df = pd.read_csv(self.indir / Path(master_csv))
+        self.datasets = [Dataset(self.indir, row.to_dict()) for _, row in df.iterrows()]
 
     def iter_loaded(self):
         """
@@ -32,10 +35,9 @@ class Plotter:
             finally:
                 ds._unload()
 
-    def setup_figure(self, title=None, xlim=None, ylim=None, legendtitle=None, plotstr=None):
+    def setup_figure(self, title=None, xlim=None, ylim=None, plotstr=None):
         plt.figure()
         ax = plt.axes(projection=ccrs.PlateCarree())
-        plt.legend(title=legendtitle, fontsize='small', bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.xlim(xlim[0], xlim[1])
         plt.ylim(ylim[0], ylim[1])
         ax.coastlines()
@@ -61,11 +63,11 @@ class Plotter:
         
         for ext in extensions:
             plotpath = self.outdir / Path(outname+ext)
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-            print(f"Plot saved to: {plot_path}")
+            plt.savefig(plotpath, dpi=300, bbox_inches='tight')
+            print(f"Plot saved to: {plotpath}")
 
     def plot_nearestneighbors(self, recreate_csv, show_plots=False, plot_histograms=True):
-        for dataset in plotter.iter_loaded():
+        for dataset in self.iter_loaded():
             # df_msg, df_mtg will go out of scope at the end of each iteration, so there won't be a memory leak.
             # They point to the same dataframe as dataset.data_msg and dataset.data_mtg
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
@@ -74,7 +76,7 @@ class Plotter:
             # if not reading the nn csv from file
             matches_dir = self.indir / Path("matches")
             matches_dir.mkdir(parents=True, exist_ok=True)
-            path_output_csv = matches_dir / Path(f"{dataset.filepath_msg.split('.csv')[0]}_{dataset.filepath_mtg.split('.csv')[0]}_matches_nn.csv")
+            path_output_csv = matches_dir / Path(f"{dataset.filepath_msg.stem}_{dataset.filepath_mtg.stem}_matches_nn.csv")
             if not path_output_csv.exists() or recreate_csv:
 
                 retrievalcodes = []
@@ -83,8 +85,8 @@ class Plotter:
 
                 # Apply cut
                 if cutstr:
-                    sat, variable, operator, value = (cut_str.split(" ")[i] for i in range(4))
-                    constraints = {"variables" : [variable], "operator" : [operator], "values": [value]}
+                    sat, variable, operator, value = (cutstr.split(" ")[i] for i in range(4))
+                    constraints = {"variables" : [variable], "operators" : [operator], "values": [float(value)]}
                     if sat.lower() == "msg":
                         df_msg = filters.apply_constraints(df_msg, constraints)
                     else:
@@ -92,6 +94,8 @@ class Plotter:
                         
                 search_matches = nn.find_nn(dataset, threshold=0.01)
                 for msg_match, mtg_match in search_matches:
+                    msg_matches.append(msg_match)
+                    mtg_matches.append(mtg_match)
                     flags_msg = retrieval.flags_from_series(msg_match)
                     flags_mtg = retrieval.flags_from_series(mtg_match)
                     retrievalcode = retrieval.pick_code(flags_msg, flags_mtg)
@@ -107,12 +111,12 @@ class Plotter:
                     df_msg_matches['MTG_BTD2_conf'] = df_mtg_matches['BTD2_conf']
                     df_msg_matches['MTG_PreFilter_VA_Confidence'] = df_mtg_matches['PreFilter_VA_Confidence']
                     df_msg_matches['MTG_Median_VA_Confidence'] = df_mtg_matches['Median_VA_Confidence']
-                    df_msg_matches.to_csv(f_output_csv, index=False)
-                    print(f"Nearest-neighbour MSG matches written to {f_output_csv}")
+                    df_msg_matches.to_csv(path_output_csv, index=False)
+                    print(f"Nearest-neighbour MSG matches written to {path_output_csv}")
 
             # if reading csv from file
             else:
-                df_msg_matches = pd.read_csv(f_output_csv)
+                df_msg_matches = pd.read_csv(path_output_csv)
 
             codes = df_msg_matches['retrieval_code']
             unique_codes = df_msg_matches['retrieval_code'].unique()
@@ -128,7 +132,6 @@ class Plotter:
             self.setup_figure(title="MSG/MTG Detection Type Comparison", 
                               xlim=dataset.lon_range,
                               ylim=dataset.lat_range,
-                              legendtitle='Detection Type',
                               plotstr=f"Region: {meta['region']}\n"+f"{cutstr}\n"+f"Time: {meta['time_msg']}"
                               )
 
@@ -138,13 +141,14 @@ class Plotter:
                     plt.scatter(
                         code_subset['Lon'], code_subset['Lat'],
                         s=2,
-                        label=retrieval_code_labels.get(code),
+                        label=config.RETRIEVAL_CODE_LABELS[code],
                         color=colors(i),
                         alpha=0.8
                     )
 
+            plt.legend(title='Detection Type', fontsize='small', bbox_to_anchor=(1.05, 1), loc='upper left')
             # Save the plot before showing
-            outname = f"{region.replace(" ","_")}_{meta['time_msg']}_detection_type_map"
+            outname = f"{meta['region'].replace(" ","_")}_{meta['time_msg']}_detection_type_map"
             self.save_plots(outname)
             if show_plots:
                 plt.show()
@@ -152,7 +156,8 @@ class Plotter:
 
             if plot_histograms:
                 # Count occurrences of each code
-                code_counts = Counter(codes)
+                code_strings = [config.RETRIEVAL_CODE_LABELS[code] for code in codes.values if code not in config.codes_to_ignore]
+                code_counts = Counter(code_strings)
 
                 # Sort by frequency (descending)
                 sorted_items = sorted(code_counts.items(), key=lambda x: x[1], reverse=True)
@@ -210,7 +215,7 @@ class Plotter:
                 transform=ax.transAxes
                 )
 
-                outname = f"{region.replace(" ","_")}_{timestr}_detection_type_histogram"
+                outname = f"{meta['region'].replace(" ","_")}_{meta['time_msg']}_detection_type_histogram"
                 self.save_plots(outname)
                 if show_plots:
                     plt.show()

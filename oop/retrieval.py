@@ -94,11 +94,8 @@ def pick_code(flags_msg, flags_mtg):
         return "conf4_other_msgconf2"
 
     # msg_conf == 4 and mtg_conf == 1  
-    if cs == 4 and ct == 1:
-        if ft['fail_c4'] and ft['fail_conmask']: return "conf1_c4_conmask_msgconf4"
-        if ft['fail_c4']: return "conf1_c4_msgconf4"
-        if ft['fail_conmask']: return "conf1_conmask_msgconf4"
-        return "conf1_other_msgconf4"
+    if ct == 1 and cs == 4:
+        return "conf1_msgconf4"
 
     # mtg_conf == 7 and msg_conf == 7
     if ct == 7 and cs == 7:
@@ -116,8 +113,11 @@ def pick_code(flags_msg, flags_mtg):
     if ct == 3 and cs == 3:
         return "conf3_msgconf3"
 
+    if ct == 2 and cs == 4:
+        return "conf2_msgconf4"
+
     if ct == 0:
         return "noret"
 
-    return
+    return "other"
 
