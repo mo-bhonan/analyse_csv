@@ -1,3 +1,4 @@
+from scipy.spatial import KDTree
 
 def find_nn(dataset, threshold = 0.):
 

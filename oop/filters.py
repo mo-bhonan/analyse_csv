@@ -1,5 +1,5 @@
 import numpy as np
-from .config import OP_MAP, OP_MAP_STR
+from config import OP_MAP, OP_MAP_STR
 
 def apply_constraints(df, constraints):
     mask = np.ones(len(df), dtype=bool)
@@ -9,6 +9,7 @@ def apply_constraints(df, constraints):
             op_str = op_str[3:]
         fn = OP_MAP[op_str]
         v = df[val[3:]] if isinstance(val, str) and val.startswith('df_') else val
+        a = fn(df[var], v)
         mask = (mask | fn(df[var], v)) if use_or else (mask & fn(df[var], v))
     return df[mask]
 

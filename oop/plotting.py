@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from matplotlib.patches import Rectangle, Patch
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import pandas as pd
 from pathlib import Path
 import config
@@ -10,64 +9,22 @@ import filters
 import retrieval
 import gc
 import nn
+import plot_utils
 from dataset import Dataset
 from collections import Counter
 import io
 
 class Plotter:
-    def __init__(self, indir, outdir, master_csv):
+    def __init__(self, indir, outdir, master_csv, show_plots=False):
         self.indir = Path(indir)
         self.outdir = Path(outdir)
+        self.show_plots = show_plots
 
         df = pd.read_csv(self.indir / Path(master_csv))
         self.datasets = [Dataset(self.indir, row.to_dict()) for _, row in df.iterrows()]
 
-    def iter_loaded(self):
-        """
-        Generator that yields each Dataset after loading.
-        Automatically unloads the previous dataset when moving to the next
-        (or if the caller raises/breaks).
-        """
-        for ds in self.datasets:
-            ds._load()
-            try:
-                yield ds
-            finally:
-                ds._unload()
-
-    def setup_figure(self, title=None, xlim=None, ylim=None, plotstr=None):
-        plt.figure()
-        ax = plt.axes(projection=ccrs.PlateCarree())
-        plt.xlim(xlim[0], xlim[1])
-        plt.ylim(ylim[0], ylim[1])
-        ax.coastlines()
-        plt.title(title)
-
-        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - (ylim[1]-ylim[0])*0.02, plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
-
-        gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
-        gl.xlines = True   
-        gl.bottom_labels = True
-        gl.left_labels = True
-        gl.xformatter = LONGITUDE_FORMATTER
-        gl.yformatter = LATITUDE_FORMATTER
-        gl.xlabel_style = {'size': 14} 
-        gl.ylabel_style = {'size': 14}    
-        return ax
-
-    def save_plots(self, outname, savesvgpdf=False):
-        outname = Path(outname).stem
-        extensions = ['.png']
-        if savesvgpdf:
-            extensions += ['.pdf', '.svg']
-        
-        for ext in extensions:
-            plotpath = self.outdir / Path(outname+ext)
-            plt.savefig(plotpath, dpi=300, bbox_inches='tight')
-            print(f"Plot saved to: {plotpath}")
-
-    def plot_nearestneighbors(self, recreate_csv, show_plots=False, plot_histograms=True):
-        for dataset in self.iter_loaded():
+    def plot_nearestneighbors(self, recreate_csv, plot_histograms=True):
+        for dataset in plot_utils.iter_loaded(self.datasets):
             # df_msg, df_mtg will go out of scope at the end of each iteration, so there won't be a memory leak.
             # They point to the same dataframe as dataset.data_msg and dataset.data_mtg
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
@@ -129,7 +86,7 @@ class Plotter:
             else:
                 colors = plt.get_cmap('tab20', len(unique_codes))
 
-            self.setup_figure(title="MSG/MTG Detection Type Comparison", 
+            plot_utils.setup_figure(title="MSG/MTG Detection Type Comparison", 
                               xlim=dataset.lon_range,
                               ylim=dataset.lat_range,
                               plotstr=f"Region: {meta['region']}\n"+f"{cutstr}\n"+f"Time: {meta['time_msg']}"
@@ -149,8 +106,8 @@ class Plotter:
             plt.legend(title='Detection Type', fontsize='small', bbox_to_anchor=(1.05, 1), loc='upper left')
             # Save the plot before showing
             outname = f"{meta['region'].replace(" ","_")}_{meta['time_msg']}_detection_type_map"
-            self.save_plots(outname)
-            if show_plots:
+            plot_utils.save_plots(self.outdir, outname)
+            if self.show_plots:
                 plt.show()
             plt.close()
 
@@ -216,8 +173,67 @@ class Plotter:
                 )
 
                 outname = f"{meta['region'].replace(" ","_")}_{meta['time_msg']}_detection_type_histogram"
-                self.save_plots(outname)
-                if show_plots:
+                plot_utils.save_plots(self.outdir, outname)
+                if self.show_plots:
                     plt.show()
                 plt.close()
+
+    def make_btd_plots(self):
+        for dataset in plot_utils.iter_loaded(self.datasets):
+            df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
+            meta = dataset.metadata
+            cutstr = config.getcutstr(meta['conf_cut'])
+
+            # Restrict MTG dataframe to the MSG lon/lat
+            df_mtg = df_mtg[
+                (df_mtg['Lat'] > dataset.latmin_msg) & (df_mtg['Lat'] < dataset.latmax_msg) &
+                (df_mtg['Lon'] > dataset.lonmin_msg) & (df_mtg['Lon'] < dataset.lonmax_msg)
+            ]
+
+            mtg_btd2 = df_mtg["BTD2_conf"].values
+            msg_btd2 = df_msg["BTD2_conf"].values
+            mtg_btd3 = df_mtg["VolcanicAsh_BTD3"].values
+            msg_btd3 = df_msg["VolcanicAsh_BTD3"].values
+
+            # Plot BTD2 histogram
+            fig, ax = plot_utils.plot_btd_hist(
+                        [mtg_btd2, msg_btd2],
+                        xlabel="BTD2",
+                        ylabel="Probability Density",
+                        title="BTD2 values",
+                        xmin = 0,
+                        plotc4=meta["plotc4"],
+                        plotc3=meta["plotc3"],
+                        plotc1=meta["plotc1"],
+                        outname=f"BTD2_{meta['region'].replace(" ","_")}_{meta['time_msg']}.png",
+                        latlonstr=dataset.latlonstr,
+                        regionstr=f"Plot Region: {meta['region']}",
+                        timestr=f"Time: {meta['time_msg']}",
+                        outdir=self.outdir,
+                        conf_cut=meta["conf_cut"],
+                    )
+
+            if self.show_plots:
+                plt.show()
+            plt.close()
+
+            # Plot BTD3 histogram
+            fig, ax = plot_utils.plot_btd_hist(
+                        [mtg_btd3, msg_btd3],
+                        xlabel="BTD3",
+                        ylabel="Probability Density",
+                        title="BTD3 values",
+                        xmin=0,
+                        plotBTD3thresh=True,
+                        outname=f"BTD3_{meta['region'].replace(" ","_")}_{meta['time_msg']}.png",
+                        latlonstr=dataset.latlonstr,
+                        regionstr=f"Plot Region: {meta['region']}",
+                        timestr=f"Time: {meta['time_msg']}",
+                        outdir=self.outdir,
+                        conf_cut=meta["conf_cut"],
+                    )
+
+            if self.show_plots:
+                plt.show()
+            plt.close()
 

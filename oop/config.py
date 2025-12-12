@@ -39,8 +39,8 @@ RETRIEVAL_CODE_LABELS = {
     "conf3_btdcutoff": "MTG Conf 3, MSG Conf 0 fails: BTDcutoff",
     "conf3_c3": "MTG Conf 3, MSG Conf 0 fails: C3",
     "conf3_other": "MTG Conf 3, MSG Conf 0 fails: Other",
-    "conf1_c3_libmask ": "MTG Conf 1, MSG Conf 0 fails: C3, Liberal Mask",
-    "conf1_c4_libmask ": "MTG Conf 1, MSG Conf 0 fails: C4, Liberal Mask",
+    "conf1_c3_libmask": "MTG Conf 1, MSG Conf 0 fails: C3, Liberal Mask",
+    "conf1_c4_libmask": "MTG Conf 1, MSG Conf 0 fails: C4, Liberal Mask",
     "conf1_c4": "MTG Conf 1, MSG Conf 0 fails: C4 Threshold",
     "conf1_c3": "MTG Conf 1, MSG Conf 0 fails: C3 Threshold",
     "conf1_libmask": "MTG Conf 1, MSG Conf 0 fails: Liberal Mask",
@@ -72,6 +72,7 @@ RETRIEVAL_CODE_LABELS = {
     "conf6_msgconf3": "MTG Conf 6, MSG Conf 3",
     "conf2_msgconf4": "MSG Conf 4, MTG Conf 2",
     "conf4_c4_conmask_msgconf2": "MTG Conf 4, MSG Conf 2 fails: C4 & Con Mask",
+    "other": "Other",
 }
 
 DICT_CUT_CONSTRAINT = {
