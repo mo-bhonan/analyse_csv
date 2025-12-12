@@ -6,18 +6,66 @@ def getcutstr(conf_cut):
     "mtg_medva_==_4", "mtg_medva_==_7", "mtg_medva_==_3", "mtg_medva_==_5", "mtg_medva_==_6", "mtg_medva_>_0"
     '''
 
-    l_conf_cut = conf_cut.split("_")
-    l_conf_cut[0] = l_conf_cut[0].upper()
-    l_conf_cut[1] = VAR_MAP[l_conf_cut[1]]
-    if l_conf_cut[2] not in OP_MAP:
-        raise ValueError(f"Invalid cutstr. Third element of string must correpond to an operator. Got {l_conf_cut[2]}.")
-    cut_str = " ".join(l_conf_cut)
+    if conf_cut:
+        try:
+            l_conf_cut = conf_cut.split("_")
+            l_conf_cut[0] = l_conf_cut[0].upper()
+            l_conf_cut[1] = VAR_MAP[l_conf_cut[1]]
+            if l_conf_cut[2] not in OP_MAP:
+                raise ValueError(f"Invalid cutstr. Third element of string must correpond to an operator. Got {l_conf_cut[2]}.")
+            cut_str = " ".join(l_conf_cut)
+        except:
+            cut_str = ""
+    else:
+        cut_str = ""
     return cut_str
+
+def splitcutstr(cutstr):
+    if cutstr:
+        sat, variable, operator, value = (cutstr.split(" ")[i] for i in range(4))
+    else: 
+        sat, variable, operator, value = ("" for i in range(4))
+    return (sat, variable, operator, value)
+
+def getbmthresholds(name):
+    if name == "Unfiltered":
+        aa = -0.4
+        bb = -0.4
+        c = 2.5
+    elif name == "Low_Lat":
+        aa = -0.9
+        bb = 0.0
+        c = 2.3
+    elif name == "High_Zenith":
+        aa = -1.0
+        bb = 0.0
+        c = 2.3
+    elif name == "SH_Arid":
+        aa = -1.0
+        bb = 0.0
+        c = 1.6
+    elif name == "NH_Arid":
+        aa = -1.0
+        bb = 0.0
+        c = 1.3
+    elif name in ["SO2_Proxy", "Ash_Proxy"]:
+        aa = -0.9
+        bb = 0.0
+        c = 2.3
+    else:
+        raise ValueError("Got a beta mask which isn't unfiltered or low_lat. Exiting...")
+
+    return (aa, bb, c)
 
 # ...existing code...
 OP_MAP = {'==': op.eq, '!=': op.ne, '>': op.gt, '<': op.lt, '>=': op.ge, '<=': op.le}
 OP_MAP_STR = {'==':'eq','!=':'ne','>':'gt','<':'lt','>=':'ge','<=':'le'}
 VAR_MAP = {'medva': 'Median_VA_Confidence'}
+
+SO2_cloud_latmin = 13.
+SO2_cloud_latmax = 14.
+SO2_cloud_lonmin = 40.
+SO2_cloud_lonmax = 45.
 
 codes_to_ignore = ["noret"]
 RETRIEVAL_CODE_LABELS = {

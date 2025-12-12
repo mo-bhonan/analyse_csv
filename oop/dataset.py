@@ -56,15 +56,20 @@ class Dataset:
         self.n_msg = None
         self.n_mtg = None
 
-    def _load(self):
-        self.data_msg = pd.read_csv(self.filepath_msg)
-        self.data_mtg = pd.read_csv(self.filepath_mtg)
+    def load(self, df_msg=None, df_mtg=None):
 
-        # Validate expected columns exist
-        for dfname, df in (("msg", self.data_msg), ("mtg", self.data_mtg)):
-            for col in ("Lon", "Lat"):
-                if col not in df.columns:
-                    raise KeyError(f"Expected column '{col}' in {dfname} CSV: {df.columns.tolist()}")
+        if df_msg is None and df_mtg is None:
+            self.data_msg = pd.read_csv(self.filepath_msg)
+            self.data_mtg = pd.read_csv(self.filepath_mtg)
+
+            # Validate expected columns exist
+            for dfname, df in (("msg", self.data_msg), ("mtg", self.data_mtg)):
+                for col in ("Lon", "Lat"):
+                    if col not in df.columns:
+                        raise KeyError(f"Expected column '{col}' in {dfname} CSV: {df.columns.tolist()}")
+        else:
+            self.data_msg = df_msg
+            self.data_mtg = df_mtg
 
         # Convert Lon/Lat columns to NumPy arrays for fast access
         self.lons_msg = self.data_msg["Lon"].to_numpy()
@@ -73,15 +78,15 @@ class Dataset:
         self.lats_mtg = self.data_mtg["Lat"].to_numpy()
 
         # Compute min/max directly from DataFrames to avoid storing arrays
-        self.lonmin_msg = self.lons_msg.min()
-        self.lonmax_msg = self.lons_msg.max()
-        self.latmin_msg = self.lats_msg.min()
-        self.latmax_msg = self.lats_msg.max()
+        self.lonmin_msg = np.min(self.lons_msg, initial=90.)
+        self.lonmax_msg = np.max(self.lons_msg, initial=-90.)
+        self.latmin_msg = np.min(self.lats_msg, initial=90.)
+        self.latmax_msg = np.max(self.lats_msg, initial=-90.)
 
-        self.lonmin_mtg = self.lons_mtg.min()
-        self.lonmax_mtg = self.lons_mtg.max()
-        self.latmin_mtg = self.lats_mtg.min()
-        self.latmax_mtg = self.lats_mtg.max()
+        self.lonmin_mtg = np.min(self.lons_mtg, initial=90.)
+        self.lonmax_mtg = np.max(self.lons_mtg, initial=-90.)
+        self.latmin_mtg = np.min(self.lats_mtg, initial=90.)
+        self.latmax_mtg = np.max(self.lats_mtg, initial=-90.)
 
         self.latstr_msg = '('+str(round(self.latmin_msg,1))+','+str(round(self.latmax_msg,1))+')'
         self.lonstr_msg = '('+str(round(self.lonmin_msg,1))+','+str(round(self.lonmax_msg,1))+')'

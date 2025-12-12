@@ -11,7 +11,7 @@ def iter_loaded(datasets):
 	(or if the caller raises/breaks).
 	"""
 	for ds in datasets:
-		ds._load()
+		ds.load()
 		try:
 			yield ds
 		finally:

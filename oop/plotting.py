@@ -13,6 +13,7 @@ import plot_utils
 from dataset import Dataset
 from collections import Counter
 import io
+import copy
 
 class Plotter:
     def __init__(self, indir, outdir, master_csv, show_plots=False):
@@ -29,7 +30,7 @@ class Plotter:
             # They point to the same dataframe as dataset.data_msg and dataset.data_mtg
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
             meta = dataset.metadata
-            cutstr = config.getcutstr(meta['conf_cut'])
+            cutstr = config.getcutstr(meta.get('conf_cut'))
             # if not reading the nn csv from file
             matches_dir = self.indir / Path("matches")
             matches_dir.mkdir(parents=True, exist_ok=True)
@@ -42,7 +43,7 @@ class Plotter:
 
                 # Apply cut
                 if cutstr:
-                    sat, variable, operator, value = (cutstr.split(" ")[i] for i in range(4))
+                    sat, variable, operator, values = config.splitcutstr(cutstr)
                     constraints = {"variables" : [variable], "operators" : [operator], "values": [float(value)]}
                     if sat.lower() == "msg":
                         df_msg = filters.apply_constraints(df_msg, constraints)
@@ -182,7 +183,7 @@ class Plotter:
         for dataset in plot_utils.iter_loaded(self.datasets):
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
             meta = dataset.metadata
-            cutstr = config.getcutstr(meta['conf_cut'])
+            cutstr = config.getcutstr(meta.get('conf_cut'))
 
             # Restrict MTG dataframe to the MSG lon/lat
             df_mtg = df_mtg[
@@ -236,4 +237,167 @@ class Plotter:
             if self.show_plots:
                 plt.show()
             plt.close()
+
+    def plot_beta_masks(self, plotproxies=True):
+
+        for dataset in plot_utils.iter_loaded(self.datasets):
+            df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
+            meta = dataset.metadata
+            cutstr = config.getcutstr(meta.get('conf_cut'))
+            _, var, op, val = config.splitcutstr(cutstr)
+            # Doesn't make sense to plot the beta masks for some cases such as conf-7 not over NH arid regions, as the beta masks are not used for detection
+            if var == "Median_VA_Confidence" and op == "==" and val == "7":
+                continue
+
+            df_mtg_unfiltered = df_mtg[(df_mtg['aa'] == -0.4) & (df_mtg['bb'] == -0.4) & (df_mtg['cc'] == 2.5)]
+            df_mtg_low_lat = df_mtg[(df_mtg['aa'] == -0.9) & (df_mtg['bb'] == 0.0) & (df_mtg['cc'] == 2.3)]
+            df_mtg_high_zenith = df_mtg[(df_mtg['aa'] == -1.0) & (df_mtg['bb'] == 0.0) & (df_mtg['cc'] == 2.3)]
+            df_mtg_sh_arid = df_mtg[(df_mtg['aa'] == -1.0) & (df_mtg['bb'] == 0.0) & (df_mtg['cc'] == 1.6)]
+            df_mtg_nh_arid = df_mtg[(df_mtg['aa'] == -1.0) & (df_mtg['bb'] == 0.0) & (df_mtg['cc'] == 1.3)]
+
+            df_msg_unfiltered = df_msg[(df_msg['aa'] == -0.4) & (df_msg['bb'] == -0.4) & (df_msg['cc'] == 2.5)]
+            df_msg_low_lat = df_msg[(df_msg['aa'] == -0.9) & (df_msg['bb'] == 0.0) & (df_msg['cc'] == 2.3)]
+            df_msg_high_zenith = df_msg[(df_msg['aa'] == -1.0) & (df_msg['bb'] == 0.0) & (df_msg['cc'] == 2.3)]
+            df_msg_sh_arid = df_msg[(df_msg['aa'] == -1.0) & (df_msg['bb'] == 0.0) & (df_msg['cc'] == 1.6)]
+            df_msg_nh_arid = df_msg[(df_msg['aa'] == -1.0) & (df_msg['bb'] == 0.0) & (df_msg['cc'] == 1.3)]
+
+            dfs = [(df_mtg_unfiltered, df_msg_unfiltered, "Unfiltered"), (df_mtg_low_lat, df_msg_low_lat, "Low_Lat"),
+                   (df_mtg_high_zenith, df_msg_high_zenith, "High_Zenith"), (df_mtg_sh_arid, df_msg_sh_arid, "SH_Arid"),
+                   (df_mtg_nh_arid, df_msg_nh_arid, "NH_Arid")]
+
+            # If we want to plot the SO2 and Ash proxies 
+            if plotproxies:
+                threshold = 0.1
+                df_msg_det = df_msg[(df_msg['BTD2_conf'] <= -1.0) | (df_msg['VolcanicAsh_BTD3'] <= 1.5)]
+                df_mtg_det = df_mtg[(df_mtg['BTD2_conf'] <= -1.0) | (df_mtg['VolcanicAsh_BTD3'] <= 1.5)]
+
+                # Create a shallow-copy of dataset and set new references to modified dataframes
+                dataset_det = copy.copy(dataset)
+                dataset_det.load(df_msg=df_msg_det, df_mtg=df_mtg_det)
+
+                # Set lt to False to perform the search for nearest neighbours ABOVE the threshold distance
+                # and get the MSG matches corresponding to points which have a far away MTG point (proxy for SO2 cloud)
+                search_matches = nn.find_nn(dataset_det, threshold, lt=False)
+                msg_matches = [match[1] for match in search_matches]
+                df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
+
+                # Filter MSG points to lat/lon region around the SO2 cloud (set in config file)
+                df_msg_matches = df_msg_matches[((df_msg_matches['Lat'] > config.SO2_cloud_latmin) & (df_msg_matches['Lat'] < config.SO2_cloud_latmax)) &
+                                                ((df_msg_matches['Lon'] > config.SO2_cloud_lonmin) & (df_msg_matches['Lon'] < config.SO2_cloud_lonmax))]
+
+                if not df_msg_matches.empty:
+
+                    # Now use the MSG matches to search for the nearest neighbour MTG pixels without any detection thresholds
+                    # Filter the lat/lon region to speed up the search
+                    df_mtg_filt = df_mtg[((df_mtg['Lat'] > 13.) & (df_mtg['Lat'] < 14.)) & ((df_mtg['Lon'] > 40.) & (df_mtg['Lon'] < 45.))]
+                    dataset_so2 = copy.copy(dataset)
+                    dataset_so2.load(df_msg=df_msg_matches, df_mtg=df_mtg_filt)
+                    # Do a strict nearest-neighbour search around the msg SO2 cloud points, and return the nearest MTG neighbours
+                    mtg_matches = nn.find_nn(dataset_so2)
+
+                    df_mtg_matches = pd.DataFrame(mtg_matches).reset_index(drop=True)
+                    dfs.append((df_mtg_matches, df_msg_matches, "SO2_Proxy"))
+
+                    londiff = abs(dataset_det.lonmax_mtg - dataset_det.lonmin_mtg)
+                    latdiff = abs(dataset_det.latmax_mtg - dataset_det.latmin_mtg)
+
+                    # Filter MSG to a window around the MTG ash cloud to make computation faster
+                    df_msg_filt = df_msg[((df_msg['Lat'] > dataset_det.latmin_mtg - 0.1*latdiff) & (df_msg['Lat'] < dataset_det.latmax_mtg + 0.1*latdiff))&
+                                           ((df_msg['Lon'] > dataset_det.lonmin_mtg - 0.1*londiff) & (df_msg['Lon'] < dataset_det.lonmax_mtg + 0.1*latdiff))]
+                    dataset_ash = copy.copy(dataset)
+                    dataset_ash.load(df_msg = df_msg_filt, df_mtg=df_mtg_det)
+                    
+                    msg_matches = nn.find_nn(dataset_ash)
+                    df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
+                    dfs.append((df_mtg_det, df_msg_matches, "Ash_Proxy"))
+                else:
+                    print(f"WARNING: Skipping make proxy beta mask plots for MSG {meta['time_msg']}, MTG {meta['time_mtg']}.")
+
+            for df_mtg, df_msg, name in dfs:
+                if len(df_mtg) == 0 or len(df_msg) == 0:
+                    continue
+
+                aa, bb, c = config.getbmthresholds(name)
+                # Define x range
+                x = np.linspace(0, 2.5, 100)
+
+                # Define polynomial function
+                y_conservative = aa * x**2 + bb * x + c - 0.4
+                y_liberal = aa * x**2 + bb * x + c
+
+                mtg_beta_870_108, msg_beta_870_108 = df_mtg['Beta_870_108'], df_msg['Beta_870_108']
+                mtg_beta_120_108, msg_beta_120_108 = df_mtg['Beta_120_108'], df_msg['Beta_120_108']
+                for mode in ["msg", "mtg"]:
+
+                    # Create plot
+                    plt.figure(figsize=(8, 6))
+                    _name = name.replace("_"," ")
+                    if _name in ["SO2 Proxy", "Ash Proxy"]:
+                        _name = "Low Lat"
+                    plt.plot(x, y_conservative, 'r--', label=f'Conservative Beta Mask: {_name}')
+                    plt.plot(x, y_liberal, 'b--', label=f'Liberal Beta Mask: {_name}')
+                    if mode == "msg":
+                        plt.xlabel(r'$\beta$(8.7,10.8)')
+                        plt.ylabel(r'$\beta$(12.0,10.8)')
+                    else:
+                        plt.xlabel(r'$\beta$(8.7,10.5)')
+                        plt.ylabel(r'$\beta$(12.3,10.5)')
+                    plt.grid(True)
+                    plt.xlim(0, 2.5)
+                    plt.ylim(0, 2.5)
+
+                    # Create a 2D histogram for MTG and MSG beta values
+                    x_bins = np.linspace(0, 2.5, 100)
+                    y_bins = np.linspace(0, 2.5, 100)
+                    if mode == 'msg':
+                        xvals = np.array(msg_beta_870_108)
+                        yvals = np.array(msg_beta_120_108)
+                        H, xedges, yedges = np.histogram2d(xvals, yvals, bins=[x_bins, y_bins])
+                    else:
+                        xvals = np.array(mtg_beta_870_108)
+                        yvals = np.array(mtg_beta_120_108)
+                        H, xedges, yedges = np.histogram2d(xvals, yvals, bins=[x_bins, y_bins])
+
+                    # Plot density
+                    X, Y = np.meshgrid(xedges, yedges)
+                    pcm = plt.pcolormesh(X, Y, H.T, cmap='gist_heat_r', shading='auto')
+
+                    # Calculate percentage below conservative and liberal lines
+                    # For each point, check if y < y_conservative(x) or y < y_liberal(x)
+                    def poly_conservative(xv):
+                        return aa * xv**2 + bb * xv + c - 0.4
+                    def poly_liberal(xv):
+                        return aa * xv**2 + bb * xv + c
+
+                    below_conservative = np.sum(yvals < poly_conservative(xvals))
+                    below_liberal = np.sum(yvals < poly_liberal(xvals))
+                    total_points = len(xvals)
+                    perc_below_conservative = (below_conservative / total_points) * 100 if total_points > 0 else 0
+                    perc_below_liberal = (below_liberal / total_points) * 100 if total_points > 0 else 0
+                    passed_str = f"{perc_below_conservative:.1f}% below con., {perc_below_liberal:.1f}% below lib."
+
+                    # Add colorbar for combined scale
+                    plt.colorbar(pcm, label='Count', orientation='vertical')
+
+                    plotstr = f"{meta['region']}\n"+f"{dataset.latlonstr_msg}\n"+f"{passed_str}\n"+f"Time MSG: {meta['time_msg']}\n"+f"Time MTG: {meta['time_mtg']}"
+                    xlim = plt.gca().get_xlim()
+                    ylim = plt.gca().get_ylim()
+                    plt.text(xlim[0] + 0.025*(xlim[1]-xlim[0]), ylim[0]+0.15*(ylim[1]-ylim[0]), plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
+
+                    plt.legend()
+                    if name == "SO2_Proxy":
+                        plt.title(mode.upper() + r' $\beta$ space for pixels flagged with unique MSG detections')
+                    elif name == "Ash_Proxy":
+                        if mode == "mtg":
+                            plt.title(mode.upper() + r' $\beta$ space for pixels passing detection')
+                        else:
+                            plt.title(r'$\beta$ space for MSG pixels matched to MTG pixels passing detection')
+                    else:
+                        plt.title(mode.upper() + r' $\beta$ space')
+                    # Save plot
+                    outname = f"beta_space_{mode}_{meta['region'].replace(" ","_")}_msg{meta['time_msg']}_mtg{meta['time_mtg']}_{name}.png"
+                    plot_utils.save_plots(self.outdir, outname)
+                    if self.show_plots:
+                        plt.show()
+                    plt.close()
 
