@@ -197,147 +197,136 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
 
     return(fig, ax)
 
-def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommeta=True, plotBTD3=False, custombounds=None, **kwargs):
+def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommeta=True, custombounds=None, **kwargs):
 
     df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
-    if plotBTD3:
-        BTD3_msg = np.array(df_msg["VolcanicAsh_BTD3"])
-        BTD3_mtg = np.array(df_mtg["VolcanicAsh_BTD3"])
-         
-        # Create 2D histogram
-        x_bins = np.linspace(dataset.lonmin_msg, dataset.lonmax_msg, 50)
-        y_bins = np.linspace(dataset.latmin_msg, dataset.latmax_msg, 20)
-            
-        # Create histogram
-        H_msg, xedges_msg, yedges_msg = np.histogram2d(dataset.lons_msg, dataset.lats_msg, bins=[x_bins, y_bins], weights=BTD3_msg)
-        H_mtg, xedges_mtg, yedges_mtg = np.histogram2d(dataset.lons_mtg, dataset.lats_mtg, bins=[x_bins, y_bins], weights=BTD3_mtg)
-
-        # Mask zero bins
-        H_msg = np.ma.masked_where(H_msg == 0., H_msg)
-        H_mtg = np.ma.masked_where(H_mtg == 0., H_mtg)
-            
-        # Create meshgrid for pcolormesh
-        X_msg, Y_msg = np.meshgrid(xedges_msg, yedges_msg)
-        X_mtg, Y_mtg = np.meshgrid(xedges_mtg, yedges_mtg)
-
-        londiff_msg = abs(dataset.lonmax_msg - dataset.lonmin_msg)
-        latdiff_msg = abs(dataset.latmax_msg - dataset.latmin_msg)
-        xlim = (dataset.lonmin_msg - londiff_msg*0.5, dataset.lonmax_msg + londiff_msg*0.5)
-        ylim = (dataset.latmin_msg - latdiff_msg*0.5, dataset.latmax_msg + latdiff_msg*0.5)
-
-        ax_msg = setup_figure(title="MSG BTD3 Values", xlim=xlim, ylim=ylim)
-
-        colors_lowbtd = mcolors.LinearSegmentedColormap.from_list('lowbtd', ['red','yellow'])(np.linspace(0, 1, 256))
-        colors_highbtd = plt.cm.Blues(np.linspace(0, 1, 256))
-
-        colors_btd = np.vstack((colors_lowbtd, colors_highbtd))
-        btd_map = mcolors.LinearSegmentedColormap.from_list('btd_map', colors_btd)
-        btd_map.set_bad(alpha=0)
-        divnorm = mcolors.TwoSlopeNorm(vmin=-5., vcenter=1.5, vmax=5.)
-
-        # Determine the data range to center the colormap at zero
-        vmin = H_msg.T.min()
-        vmax = H_msg.T.max()
-        # Make the color scale symmetric around zero
-        vlim = max(abs(vmin), abs(vmax))
-
-        pcm = ax_msg.pcolormesh(
-            X_msg, Y_msg, H_msg.T,
-            cmap=btd_map,
-            shading='auto',
-            transform=ccrs.PlateCarree(),
-            norm=divnorm
-        )
-
-        plt.colorbar(pcm, label='BTD3 Value')
-
-        # Plot MTG
-        londiff_mtg = abs(dataset.lonmax_mtg - dataset.lonmin_mtg)
-        latdiff_mtg = abs(dataset.latmax_mtg - dataset.latmin_mtg)
-        xlim = (dataset.lonmin_mtg - londiff_mtg*0.5, dataset.lonmax_msg + londiff_mtg*0.5)
-        ylim = (dataset.latmin_mtg - latdiff_mtg*0.5, dataset.latmax_msg + latdiff_mtg*0.5)
-
-        ax_mtg = setup_figure(title="MTG BTD3 Values", xlim=xlim, ylim=ylim)
-
-        # Determine the data range to center the colormap at zero
-        vmin = H_mtg.T.min()
-        vmax = H_mtg.T.max()
-        # Make the color scale symmetric around zero
-        vlim = max(abs(vmin), abs(vmax))
-
-        pcm = ax_mtg.pcolormesh(
-            X_mtg, Y_mtg, H_mtg.T,
-            cmap=btd_map,
-            shading='auto',
-            transform=ccrs.PlateCarree(),
-            norm=divnorm
-        )
-
-        plt.colorbar(pcm, label='BTD3 Value')
-
-        return (ax_msg, ax_mtg)
-
+    if custombounds:
+        try:
+            xlim=custombounds[0]
+            ylim=custombounds[1]
+        except:
+            return ValueError(f"Custom bounds incorrect format. Expected list or tuple with two two-element elements. Got {str(custombounds)}.")
     else:
-        if custombounds:
-            try:
-                xlim=custombounds[0]
-                ylim=custombounds[1]
-            except:
-                return ValueError(f"Custom bounds incorrect format. Expected list or tuple with two two-element elements. Got {str(custombounds)}.")
+        if boundsfrommeta:
+            xlim = (dataset.lon_range[0], dataset.lon_range[1])
+            ylim = (dataset.lat_range[0], dataset.lat_range[1])
         else:
-            if boundsfrommeta:
-                xlim = (dataset.lon_range[0], dataset.lon_range[1])
-                ylim = (dataset.lat_range[0], dataset.lat_range[1])
-            else:
-                londiff = abs(dataset.lonmax_mtg - dataset.lonmin_mtg)
-                latdiff = abs(dataset.latmax_mtg - dataset.latmin_mtg)
-                multiplier = 1.5
-                if dataset.n_msg + dataset.n_mtg < 100:
-                    multiplier = 5.0
-                xlim = (dataset.lonmin_mtg - londiff*multiplier, dataset.lonmax_mtg + londiff*multiplier)
-                ylim = (dataset.latmin_mtg - latdiff*multiplier, dataset.latmax_mtg + latdiff*multiplier)
+            londiff = abs(dataset.lonmax_mtg - dataset.lonmin_mtg)
+            latdiff = abs(dataset.latmax_mtg - dataset.latmin_mtg)
+            multiplier = 1.5
+            if dataset.n_msg + dataset.n_mtg < 100:
+                multiplier = 5.0
+            xlim = (dataset.lonmin_mtg - londiff*multiplier, dataset.lonmax_mtg + londiff*multiplier)
+            ylim = (dataset.latmin_mtg - latdiff*multiplier, dataset.latmax_mtg + latdiff*multiplier)
 
-        ax = setup_figure(xlim=xlim, ylim=ylim, **kwargs)
-        ax.scatter(dataset.lons_msg, dataset.lats_msg, s=1, alpha=0.5, color='blue')
-        ax.scatter(dataset.lons_mtg, dataset.lats_mtg, s=1, alpha=0.5, color='red')
+    ax = setup_figure(xlim=xlim, ylim=ylim, **kwargs)
+    ax.scatter(dataset.lons_msg, dataset.lats_msg, s=1, alpha=0.5, color='blue')
+    ax.scatter(dataset.lons_mtg, dataset.lats_mtg, s=1, alpha=0.5, color='red')
 
-        legend_elements = []
-        legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
-        legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
-        plt.legend(handles=legend_elements, title='Satellite', ncol=2)
+    legend_elements = []
+    legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
+    legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
+    plt.legend(handles=legend_elements, title='Satellite', ncol=2)
 
-        if plotbox:
-            #lat_min, lat_max = 11.96,14.29 #lats_msg.min(), lats_msg.max()
-            #lon_min, lon_max = 40.75,45.62 #lons_msg.min(), lons_msg.max()
-            lat_min, lat_max = 10,25 #lats_msg.min(), lats_msg.max()
-            lon_min, lon_max = 35,55 #lons_msg.min(), lons_msg.max()
-            # Add rectangle to show the boundaries
-            rect = Rectangle(
-                (lon_min, lat_min),
-                lon_max - lon_min,
-                lat_max - lat_min,
-                linewidth=2,
-                edgecolor='black',
-                facecolor='none',
-                linestyle='-',
-                transform=ccrs.PlateCarree()
-            )
-            ax.add_patch(rect)
+    if plotbox:
+        #lat_min, lat_max = 11.96,14.29 #lats_msg.min(), lats_msg.max()
+        #lon_min, lon_max = 40.75,45.62 #lons_msg.min(), lons_msg.max()
+        lat_min, lat_max = 10,25 #lats_msg.min(), lats_msg.max()
+        lon_min, lon_max = 35,55 #lons_msg.min(), lons_msg.max()
+        # Add rectangle to show the boundaries
+        rect = Rectangle(
+            (lon_min, lat_min),
+            lon_max - lon_min,
+            lat_max - lat_min,
+            linewidth=2,
+            edgecolor='black',
+            facecolor='none',
+            linestyle='-',
+            transform=ccrs.PlateCarree()
+        )
+        ax.add_patch(rect)
+    
+    if plotX:
+        # Add X marker at volcano
+        marker_lat = 13.51  
+        marker_lon = 40.72  
+
+        ax.scatter(
+            marker_lon, marker_lat,
+            marker='x',
+            s=20,  # Size of the X
+            c='black',  # Color
+            linewidths=1,  # Thickness of the X
+            transform=ccrs.PlateCarree(),
+            zorder=10  # Ensure it's plotted on top
+        )
+
+    return ax
+
+def plot_btd3(dataset, plotmsg=True):
+    if plotmsg:
+        df = dataset.data_msg
+        lonmin = dataset.lonmin_msg
+        lonmax = dataset.lonmax_msg
+        latmin = dataset.latmin_msg
+        latmax = dataset.latmax_msg
+        lons = dataset.lons_msg
+        lats = dataset.lats_msg
+        sat = "MSG"
+    else:
+        df = dataset.data_mtg
+        lonmin = dataset.lonmin_mtg
+        lonmax = dataset.lonmax_mtg
+        latmin = dataset.latmin_mtg
+        latmax = dataset.latmax_mtg
+        lons = dataset.lons_mtg
+        lats = dataset.lats_mtg
+        sat = "MTG"
+    BTD3 = np.array(df["VolcanicAsh_BTD3"])
+     
+    # Create 2D histogram
+    x_bins = np.linspace(lonmin, lonmax, 50)
+    y_bins = np.linspace(latmin, latmax, 20)
         
-        if plotX:
-            # Add X marker at volcano
-            marker_lat = 13.51  
-            marker_lon = 40.72  
+    # Create histogram
+    H, xedges, yedges = np.histogram2d(lons, lats, bins=[x_bins, y_bins], weights=BTD3)
 
-            ax.scatter(
-                marker_lon, marker_lat,
-                marker='x',
-                s=20,  # Size of the X
-                c='black',  # Color
-                linewidths=1,  # Thickness of the X
-                transform=ccrs.PlateCarree(),
-                zorder=10  # Ensure it's plotted on top
-            )
+    # Mask zero bins
+    H = np.ma.masked_where(H == 0., H)
+        
+    # Create meshgrid for pcolormesh
+    X, Y = np.meshgrid(xedges, yedges)
 
-        return ax
+    londiff = abs(lonmax - lonmin)
+    latdiff = abs(latmax - latmin)
+    xlim = (lonmin - londiff*0.5, lonmax + londiff*0.5)
+    ylim = (latmin - latdiff*0.5, latmax + latdiff*0.5)
+
+    ax = setup_figure(title=f"{sat} BTD3 Values", xlim=xlim, ylim=ylim)
+
+    colors_lowbtd = mcolors.LinearSegmentedColormap.from_list('lowbtd', ['red','yellow'])(np.linspace(0, 1, 256))
+    colors_highbtd = plt.cm.Blues(np.linspace(0, 1, 256))
+
+    colors_btd = np.vstack((colors_lowbtd, colors_highbtd))
+    btd_map = mcolors.LinearSegmentedColormap.from_list('btd_map', colors_btd)
+    btd_map.set_bad(alpha=0)
+    divnorm = mcolors.TwoSlopeNorm(vmin=-5., vcenter=1.5, vmax=5.)
+
+    # Determine the data range to center the colormap at zero
+    vmin = H.T.min()
+    vmax = H.T.max()
+    # Make the color scale symmetric around zero
+    vlim = max(abs(vmin), abs(vmax))
+
+    pcm = ax.pcolormesh(
+        X, Y, H.T,
+        cmap=btd_map,
+        shading='auto',
+        transform=ccrs.PlateCarree(),
+        norm=divnorm
+    )
+
+    plt.colorbar(pcm, label='BTD3 Value')
+
+    return ax
 

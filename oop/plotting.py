@@ -472,13 +472,17 @@ class Plotter:
                                     ((df_mtg['Lon'] > config.ashbounds[1][0]) & (df_mtg['Lon'] < config.ashbounds[1][1]))]
             dataset.load(df_msg=df_msg, df_mtg=df_mtg)
 
-            ax_msg, ax_mtg = plot_utils.plot_latlon_points_dataset(dataset, plotBTD3=True)
+            ax_msg = plot_utils.plot_btd3(dataset, plotmsg=True)
             outname_msg = f"MSG_BTD3_map_{meta['time_msg']}"
             plot_utils.save_plots(self.outdir, outname_msg)
+            if self.show_plots:
+                plt.show()
+                plt.close()
 
+            ax_mtg = plot_utils.plot_btd3(dataset, plotmsg=False)
             outname_mtg = f"MTG_BTD3_map_{meta['time_mtg']}"
             plot_utils.save_plots(self.outdir, outname_mtg)
             if self.show_plots:
                 plt.show()
-            plt.close()
+                plt.close()
 
