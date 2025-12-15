@@ -197,20 +197,20 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
 
     return(fig, ax)
 
-def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommeta=True, plotBTD3=False, custombounds=None):
+def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommeta=True, plotBTD3=False, custombounds=None, **kwargs):
 
     df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
     if plotBTD3:
-        BTD3_msg = np.array(df_msg_matches["VolcanicAsh_BTD3"])
-        BTD3_mtg = np.array(df_mtg_matches["VolcanicAsh_BTD3"])
+        BTD3_msg = np.array(df_msg["VolcanicAsh_BTD3"])
+        BTD3_mtg = np.array(df_mtg["VolcanicAsh_BTD3"])
          
         # Create 2D histogram
-        x_bins = np.linspace(lons_msg.min(), lons_msg.max(), 50)
-        y_bins = np.linspace(lats_msg.min(), lats_msg.max(), 20)
+        x_bins = np.linspace(dataset.lonmin_msg, dataset.lonmax_msg, 50)
+        y_bins = np.linspace(dataset.latmin_msg, dataset.latmax_msg, 20)
             
         # Create histogram
-        H_msg, xedges_msg, yedges_msg = np.histogram2d(lons_msg, lats_msg, bins=[x_bins, y_bins], weights=BTD3_msg)
-        H_mtg, xedges_mtg, yedges_mtg = np.histogram2d(lons_mtg, lats_mtg, bins=[x_bins, y_bins], weights=BTD3_mtg)
+        H_msg, xedges_msg, yedges_msg = np.histogram2d(dataset.lons_msg, dataset.lats_msg, bins=[x_bins, y_bins], weights=BTD3_msg)
+        H_mtg, xedges_mtg, yedges_mtg = np.histogram2d(dataset.lons_mtg, dataset.lats_mtg, bins=[x_bins, y_bins], weights=BTD3_mtg)
 
         # Mask zero bins
         H_msg = np.ma.masked_where(H_msg == 0., H_msg)
@@ -222,8 +222,8 @@ def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommet
 
         londiff_msg = abs(dataset.lonmax_msg - dataset.lonmin_msg)
         latdiff_msg = abs(dataset.latmax_msg - dataset.latmin_msg)
-        xlim = (lonmin_msg - londiff_msg*0.5, lonmax_msg + londiff_msg*0.5)
-        ylim = (latmin_msg - latdiff_msg*0.5, latmax_msg + latdiff_msg*0.5)
+        xlim = (dataset.lonmin_msg - londiff_msg*0.5, dataset.lonmax_msg + londiff_msg*0.5)
+        ylim = (dataset.latmin_msg - latdiff_msg*0.5, dataset.latmax_msg + latdiff_msg*0.5)
 
         ax_msg = setup_figure(title="MSG BTD3 Values", xlim=xlim, ylim=ylim)
 
@@ -241,7 +241,7 @@ def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommet
         # Make the color scale symmetric around zero
         vlim = max(abs(vmin), abs(vmax))
 
-        pcm = ax.pcolormesh(
+        pcm = ax_msg.pcolormesh(
             X_msg, Y_msg, H_msg.T,
             cmap=btd_map,
             shading='auto',
@@ -250,15 +250,12 @@ def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommet
         )
 
         plt.colorbar(pcm, label='BTD3 Value')
-        plt.savefig(outdir+'/'+f"MSG_BTD3_map_{timestr_msg}.png")
-        plt.show()
-        plt.close()
 
         # Plot MTG
         londiff_mtg = abs(dataset.lonmax_mtg - dataset.lonmin_mtg)
         latdiff_mtg = abs(dataset.latmax_mtg - dataset.latmin_mtg)
-        xlim = (lonmin_mtg - londiff_mtg*0.5, lonmax_msg + londiff_mtg*0.5)
-        ylim = (latmin_mtg - latdiff_mtg*0.5, latmax_msg + latdiff_mtg*0.5)
+        xlim = (dataset.lonmin_mtg - londiff_mtg*0.5, dataset.lonmax_msg + londiff_mtg*0.5)
+        ylim = (dataset.latmin_mtg - latdiff_mtg*0.5, dataset.latmax_msg + latdiff_mtg*0.5)
 
         ax_mtg = setup_figure(title="MTG BTD3 Values", xlim=xlim, ylim=ylim)
 
@@ -268,7 +265,7 @@ def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommet
         # Make the color scale symmetric around zero
         vlim = max(abs(vmin), abs(vmax))
 
-        pcm = ax.pcolormesh(
+        pcm = ax_mtg.pcolormesh(
             X_mtg, Y_mtg, H_mtg.T,
             cmap=btd_map,
             shading='auto',
@@ -300,7 +297,7 @@ def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommet
                 xlim = (dataset.lonmin_mtg - londiff*multiplier, dataset.lonmax_mtg + londiff*multiplier)
                 ylim = (dataset.latmin_mtg - latdiff*multiplier, dataset.latmax_mtg + latdiff*multiplier)
 
-        ax = setup_figure(xlim=xlim, ylim=ylim)
+        ax = setup_figure(xlim=xlim, ylim=ylim, **kwargs)
         ax.scatter(dataset.lons_msg, dataset.lats_msg, s=1, alpha=0.5, color='blue')
         ax.scatter(dataset.lons_mtg, dataset.lats_mtg, s=1, alpha=0.5, color='red')
 

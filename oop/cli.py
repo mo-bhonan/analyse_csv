@@ -19,4 +19,6 @@ if __name__ == "__main__":
     myplotter = Plotter(args.indir, args.outdir, args.master_csv_file, show_plots=args.show_plots)
     #myplotter.plot_nearestneighbors(args.recreate_csv)
     #myplotter.make_btd_plots()
-    myplotter.plot_beta_masks()
+    #myplotter.plot_beta_masks()
+    #myplotter.plot_constraints()
+    myplotter.plot_btd3()

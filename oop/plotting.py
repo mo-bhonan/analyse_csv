@@ -278,8 +278,9 @@ class Plotter:
                     plot_utils.plot_latlon_points_dataset(dataset_det, custombounds=((40.,44.),(13.,15.)))
                     outname = f"latlon_det_all_msg{meta['time_msg']}_mtg{meta['time_mtg']}"
                     plot_utils.save_plots(self.outdir, outname)
-                    plt.show()
-                    plt.close()
+                    if self.show_plots:
+                        plt.show()
+                        plt.close()
 
                 # Set lt to False to perform the search for nearest neighbours ABOVE the threshold distance
                 # and get the MSG matches corresponding to points which have a far away MTG point (proxy for SO2 cloud)
@@ -308,7 +309,8 @@ class Plotter:
                         plot_utils.plot_latlon_points_dataset(dataset_so2, boundsfrommeta=False)
                         outname = f"latlon_det_so2_msg{meta['time_msg']}_mtg{meta['time_mtg']}"
                         plot_utils.save_plots(self.outdir, outname)
-                        plt.show()
+                        if self.show_plots:
+                            plt.show()
                         plt.close()
 
                     londiff = abs(dataset_det.lonmax_mtg - dataset_det.lonmin_mtg)
@@ -330,7 +332,8 @@ class Plotter:
                         plot_utils.plot_latlon_points_dataset(dataset_ash, boundsfrommeta=False)
                         outname = f"latlon_det_ash_msg{meta['time_msg']}_mtg{meta['time_mtg']}"
                         plot_utils.save_plots(self.outdir, outname)
-                        plt.show()
+                        if self.show_plots:
+                            plt.show()
                         plt.close()
                 else:
                     print(f"WARNING: Skipping make proxy beta mask plots for MSG {meta['time_msg']}, MTG {meta['time_mtg']}.")
@@ -422,4 +425,60 @@ class Plotter:
                     if self.show_plots:
                         plt.show()
                     plt.close()
+
+    def plot_constraints(self):
+
+        for dataset in iter_loaded(self.datasets):
+            df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
+            meta = dataset.metadata
+            cutstr = config.getcutstr(meta.get('conf_cut'))
+            constraintslist = config.DICT_CUT_CONSTRAINT.get(meta.get('conf_cut'),[])
+            for constraints in constraintslist:
+
+                # Apply the constraints and calculate the percentage passed 
+                df_msg_constr, perc_passed_msg = filters.apply_constraints(df_msg, constraints, output_perc=True)
+                df_mtg_constr, perc_passed_mtg = filters.apply_constraints(df_mtg, constraints, output_perc=True)
+                dataset_constr = copy.copy(dataset)
+                dataset_constr.load(df_msg = df_msg_constr, df_mtg=df_mtg_constr)
+
+                passed_str_msg = f"MSG passed: {round(perc_passed_msg,1)}%"
+                passed_str_mtg = f"MTG passed: {round(perc_passed_mtg,1)}%"
+                passed_str = f"{passed_str_msg}\n{passed_str_mtg}"
+                constr_str_title = filters.format_constraints_for_title(constraints)
+                constr_str_file = filters.format_constraints_for_filename(constraints)
+                plotstr = f"Plot Region: {meta['region']}\n"+f"Percentage Passed: {passed_str}\n"+f"MSG Time: {meta['time_msg']}\n"+f"MTG Time: {meta['time_mtg']}"
+                title = f'Pixels passing {constr_str_title}'
+
+                plot_utils.plot_latlon_points_dataset(dataset_constr, title=title, plotstr=plotstr)
+                xlim = plt.gca().get_xlim()
+                ylim = plt.gca().get_ylim()
+                plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - 0.025*(ylim[1]-ylim[0]), plotstr, color='black', va='top', ha='left', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
+                outname = f"grid_{constr_str_file}_{meta['region'].replace(" ","_")}_msg{meta['time_msg']}_mtg{meta['time_mtg']}.png"
+                plot_utils.save_plots(self.outdir, outname)
+                if self.show_plots:
+                    plt.show()
+                plt.close()
+
+    def plot_btd3(self):
+
+        for dataset in iter_loaded(self.datasets):
+            df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
+            meta = dataset.metadata
+            df_msg = df_msg[(df_msg['BTD2_conf'] <= -1.0) | (df_msg['VolcanicAsh_BTD3'] <= 1.5)]
+            df_msg = df_msg[((df_msg['Lat'] > config.ashbounds[0][0]) & (df_msg['Lat'] < config.ashbounds[0][1])) &
+                                    ((df_msg['Lon'] > config.ashbounds[1][0]) & (df_msg['Lon'] < config.ashbounds[1][1]))]
+            df_mtg = df_mtg[(df_mtg['BTD2_conf'] <= -1.0) | (df_mtg['VolcanicAsh_BTD3'] <= 1.5)]
+            df_mtg = df_mtg[((df_mtg['Lat'] > config.ashbounds[0][0]) & (df_mtg['Lat'] < config.ashbounds[0][1])) &
+                                    ((df_mtg['Lon'] > config.ashbounds[1][0]) & (df_mtg['Lon'] < config.ashbounds[1][1]))]
+            dataset.load(df_msg=df_msg, df_mtg=df_mtg)
+
+            ax_msg, ax_mtg = plot_utils.plot_latlon_points_dataset(dataset, plotBTD3=True)
+            outname_msg = f"MSG_BTD3_map_{meta['time_msg']}"
+            plot_utils.save_plots(self.outdir, outname_msg)
+
+            outname_mtg = f"MTG_BTD3_map_{meta['time_mtg']}"
+            plot_utils.save_plots(self.outdir, outname_mtg)
+            if self.show_plots:
+                plt.show()
+            plt.close()
 
