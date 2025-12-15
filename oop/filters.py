@@ -1,7 +1,7 @@
 import numpy as np
 from config import OP_MAP, OP_MAP_STR
 
-def apply_constraints(df, constraints):
+def apply_constraints(df, constraints, output_perc=False):
     mask = np.ones(len(df), dtype=bool)
     for var, op_str, val in zip(constraints['variables'], constraints['operators'], constraints['values']):
         use_or = op_str.startswith("or_")
@@ -11,7 +11,11 @@ def apply_constraints(df, constraints):
         v = df[val[3:]] if isinstance(val, str) and val.startswith('df_') else val
         a = fn(df[var], v)
         mask = (mask | fn(df[var], v)) if use_or else (mask & fn(df[var], v))
-    return df[mask]
+    if output_perc:
+        perc_passed = (np.array(mask).sum()/len(mask))*100.
+        return (df[mask], perc_passed)
+    else:
+        return df[mask]
 
 def format_constraints_for_title(constraints):
     vals = [str(v)[3:] if isinstance(v,str) and v.startswith('df_') else str(v) for v in constraints['values']]

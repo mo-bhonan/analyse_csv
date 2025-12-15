@@ -238,7 +238,7 @@ class Plotter:
                 plt.show()
             plt.close()
 
-    def plot_beta_masks(self, plotproxies=True):
+    def plot_beta_masks(self, plotproxies=True, plotlatlon=True):
 
         for dataset in plot_utils.iter_loaded(self.datasets):
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
@@ -297,6 +297,11 @@ class Plotter:
 
                     df_mtg_matches = pd.DataFrame(mtg_matches).reset_index(drop=True)
                     dfs.append((df_mtg_matches, df_msg_matches, "SO2_Proxy"))
+                    if plotlatlon:
+                        dataset_so2.load(df_msg=df_msg_matches, df_mtg=df_mtg_matches)
+                        plot_utils.plot_latlon_points_dataset(dataset_so2, boundsfrommeta=False)
+                        plt.show()
+                        plt.close()
 
                     londiff = abs(dataset_det.lonmax_mtg - dataset_det.lonmin_mtg)
                     latdiff = abs(dataset_det.latmax_mtg - dataset_det.latmin_mtg)
@@ -310,6 +315,11 @@ class Plotter:
                     msg_matches = nn.find_nn(dataset_ash)
                     df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
                     dfs.append((df_mtg_det, df_msg_matches, "Ash_Proxy"))
+                    if plotlatlon:
+                        dataset_ash.load(df_msg=df_msg_matches, df_mtg=df_mtg_det)
+                        plot_utils.plot_latlon_points_dataset(dataset_ash, boundsfrommeta=False)
+                        plt.show()
+                        plt.close()
                 else:
                     print(f"WARNING: Skipping make proxy beta mask plots for MSG {meta['time_msg']}, MTG {meta['time_mtg']}.")
 

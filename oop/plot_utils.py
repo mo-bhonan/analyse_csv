@@ -3,50 +3,51 @@ import numpy as np
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+from matplotlib.patches import Rectangle, Patch
+import matplotlib.colors as mcolors
 
 def iter_loaded(datasets):
-	"""
-	Generator that yields each Dataset after loading.
-	Automatically unloads the previous dataset when moving to the next
-	(or if the caller raises/breaks).
-	"""
-	for ds in datasets:
-		ds.load()
-		try:
-			yield ds
-		finally:
-			ds._unload()
+    """
+    Generator that yields each Dataset after loading.
+    Automatically unloads the previous dataset when moving to the next
+    (or if the caller raises/breaks).
+    """
+    for ds in datasets:
+        ds.load()
+        try:
+            yield ds
+        finally:
+            ds._unload()
 
 def setup_figure(title=None, xlim=None, ylim=None, plotstr=None):
-	plt.figure()
-	ax = plt.axes(projection=ccrs.PlateCarree())
-	plt.xlim(xlim[0], xlim[1])
-	plt.ylim(ylim[0], ylim[1])
-	ax.coastlines()
-	plt.title(title)
-
-	plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - (ylim[1]-ylim[0])*0.02, plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
-
-	gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
-	gl.xlines = True   
-	gl.bottom_labels = True
-	gl.left_labels = True
-	gl.xformatter = LONGITUDE_FORMATTER
-	gl.yformatter = LATITUDE_FORMATTER
-	gl.xlabel_style = {'size': 14} 
-	gl.ylabel_style = {'size': 14}    
-	return ax
+    plt.figure()
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    plt.xlim(xlim[0], xlim[1])
+    plt.ylim(ylim[0], ylim[1])
+    ax.coastlines()
+    plt.title(title)
+    if plotstr:
+        plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - (ylim[1]-ylim[0])*0.02, plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
+    gl=ax.gridlines(crs=ccrs.PlateCarree(),draw_labels=False)
+    gl.xlines = True   
+    gl.bottom_labels = True
+    gl.left_labels = True
+    gl.xformatter = LONGITUDE_FORMATTER
+    gl.yformatter = LATITUDE_FORMATTER
+    gl.xlabel_style = {'size': 14} 
+    gl.ylabel_style = {'size': 14}    
+    return ax
 
 def save_plots(outdir, outname, savesvgpdf=False):
-	outname = Path(outname).stem
-	extensions = ['.png']
-	if savesvgpdf:
-		extensions += ['.pdf', '.svg']
-	
-	for ext in extensions:
-		plotpath = outdir / Path(outname+ext)
-		plt.savefig(plotpath, dpi=300, bbox_inches='tight')
-		print(f"Plot saved to: {plotpath}")
+    outname = Path(outname).stem
+    extensions = ['.png']
+    if savesvgpdf:
+        extensions += ['.pdf', '.svg']
+    
+    for ext in extensions:
+        plotpath = outdir / Path(outname+ext)
+        plt.savefig(plotpath, dpi=300, bbox_inches='tight')
+        print(f"Plot saved to: {plotpath}")
 
 def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=False, plotc3=False, plotc1=False, plotBTD3thresh=False, savehist=True, outdir='/home/users/benjamin.honan/Work/analyse_csv/plots/', outname="btdhist.png", latlonstr="", regionstr="", timestr="", conf_cut=""):
 
@@ -208,4 +209,144 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
         save_plots(outdir, outname)
 
     return(fig, ax)
+
+def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommeta=True, plotBTD3=False):
+
+    df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
+    if plotBTD3:
+        BTD3_msg = np.array(df_msg_matches["VolcanicAsh_BTD3"])
+        BTD3_mtg = np.array(df_mtg_matches["VolcanicAsh_BTD3"])
+         
+        # Create 2D histogram
+        x_bins = np.linspace(lons_msg.min(), lons_msg.max(), 50)
+        y_bins = np.linspace(lats_msg.min(), lats_msg.max(), 20)
+            
+        # Create histogram
+        H_msg, xedges_msg, yedges_msg = np.histogram2d(lons_msg, lats_msg, bins=[x_bins, y_bins], weights=BTD3_msg)
+        H_mtg, xedges_mtg, yedges_mtg = np.histogram2d(lons_mtg, lats_mtg, bins=[x_bins, y_bins], weights=BTD3_mtg)
+
+        # Mask zero bins
+        H_msg = np.ma.masked_where(H_msg == 0., H_msg)
+        H_mtg = np.ma.masked_where(H_mtg == 0., H_mtg)
+            
+        # Create meshgrid for pcolormesh
+        X_msg, Y_msg = np.meshgrid(xedges_msg, yedges_msg)
+        X_mtg, Y_mtg = np.meshgrid(xedges_mtg, yedges_mtg)
+
+        londiff_msg = abs(dataset.lonmax_msg - dataset.lonmin_msg)
+        latdiff_msg = abs(dataset.latmax_msg - dataset.latmin_msg)
+        xlim = (lonmin_msg - londiff_msg*0.5, lonmax_msg + londiff_msg*0.5)
+        ylim = (latmin_msg - latdiff_msg*0.5, latmax_msg + latdiff_msg*0.5)
+
+        ax_msg = setup_figure(title="MSG BTD3 Values", xlim=xlim, ylim=ylim)
+
+        colors_lowbtd = mcolors.LinearSegmentedColormap.from_list('lowbtd', ['red','yellow'])(np.linspace(0, 1, 256))
+        colors_highbtd = plt.cm.Blues(np.linspace(0, 1, 256))
+
+        colors_btd = np.vstack((colors_lowbtd, colors_highbtd))
+        btd_map = mcolors.LinearSegmentedColormap.from_list('btd_map', colors_btd)
+        btd_map.set_bad(alpha=0)
+        divnorm = mcolors.TwoSlopeNorm(vmin=-5., vcenter=1.5, vmax=5.)
+
+        # Determine the data range to center the colormap at zero
+        vmin = H_msg.T.min()
+        vmax = H_msg.T.max()
+        # Make the color scale symmetric around zero
+        vlim = max(abs(vmin), abs(vmax))
+
+        pcm = ax.pcolormesh(
+            X_msg, Y_msg, H_msg.T,
+            cmap=btd_map,
+            shading='auto',
+            transform=ccrs.PlateCarree(),
+            norm=divnorm
+        )
+
+        plt.colorbar(pcm, label='BTD3 Value')
+        plt.savefig(outdir+'/'+f"MSG_BTD3_map_{timestr_msg}.png")
+        plt.show()
+        plt.close()
+
+        # Plot MTG
+        londiff_mtg = abs(dataset.lonmax_mtg - dataset.lonmin_mtg)
+        latdiff_mtg = abs(dataset.latmax_mtg - dataset.latmin_mtg)
+        xlim = (lonmin_mtg - londiff_mtg*0.5, lonmax_msg + londiff_mtg*0.5)
+        ylim = (latmin_mtg - latdiff_mtg*0.5, latmax_msg + latdiff_mtg*0.5)
+
+        ax_mtg = setup_figure(title="MTG BTD3 Values", xlim=xlim, ylim=ylim)
+
+        # Determine the data range to center the colormap at zero
+        vmin = H_mtg.T.min()
+        vmax = H_mtg.T.max()
+        # Make the color scale symmetric around zero
+        vlim = max(abs(vmin), abs(vmax))
+
+        pcm = ax.pcolormesh(
+            X_mtg, Y_mtg, H_mtg.T,
+            cmap=btd_map,
+            shading='auto',
+            transform=ccrs.PlateCarree(),
+            norm=divnorm
+        )
+
+        plt.colorbar(pcm, label='BTD3 Value')
+
+        return (ax_msg, ax_mtg)
+
+    else:
+        if boundsfrommeta:
+            xlim = (dataset.lon_range[0], dataset.lon_range[1])
+            ylim = (dataset.lat_range[0], dataset.lat_range[1])
+        else:
+            londiff = abs(dataset.lonmax_mtg - dataset.lonmin_mtg)
+            latdiff = abs(dataset.latmax_mtg - dataset.latmin_mtg)
+            multiplier = 1.5
+            if dataset.n_msg + dataset.n_mtg < 100:
+                multiplier = 5.0
+            xlim = (dataset.lonmin_mtg - londiff*multiplier, dataset.lonmax_mtg + londiff*multiplier)
+            ylim = (dataset.latmin_mtg - latdiff*multiplier, dataset.latmax_mtg + latdiff*multiplier)
+
+        ax = setup_figure(xlim=xlim, ylim=ylim)
+        ax.scatter(dataset.lons_msg, dataset.lats_msg, s=1, alpha=0.5, color='blue')
+        ax.scatter(dataset.lons_mtg, dataset.lats_mtg, s=1, alpha=0.5, color='red')
+
+        legend_elements = []
+        legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
+        legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
+        plt.legend(handles=legend_elements, title='Satellite', loc='lower center', ncol=2)
+
+        if plotbox:
+            #lat_min, lat_max = 11.96,14.29 #lats_msg.min(), lats_msg.max()
+            #lon_min, lon_max = 40.75,45.62 #lons_msg.min(), lons_msg.max()
+            lat_min, lat_max = 10,25 #lats_msg.min(), lats_msg.max()
+            lon_min, lon_max = 35,55 #lons_msg.min(), lons_msg.max()
+            # Add rectangle to show the boundaries
+            rect = Rectangle(
+                (lon_min, lat_min),
+                lon_max - lon_min,
+                lat_max - lat_min,
+                linewidth=2,
+                edgecolor='black',
+                facecolor='none',
+                linestyle='-',
+                transform=ccrs.PlateCarree()
+            )
+            ax.add_patch(rect)
+        
+        if plotX:
+            # Add X marker at volcano
+            marker_lat = 13.51  
+            marker_lon = 40.72  
+
+            ax.scatter(
+                marker_lon, marker_lat,
+                marker='x',
+                s=20,  # Size of the X
+                c='black',  # Color
+                linewidths=1,  # Thickness of the X
+                transform=ccrs.PlateCarree(),
+                zorder=10  # Ensure it's plotted on top
+            )
+
+        return ax
 
