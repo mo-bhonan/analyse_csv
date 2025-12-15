@@ -6,19 +6,6 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from matplotlib.patches import Rectangle, Patch
 import matplotlib.colors as mcolors
 
-def iter_loaded(datasets):
-    """
-    Generator that yields each Dataset after loading.
-    Automatically unloads the previous dataset when moving to the next
-    (or if the caller raises/breaks).
-    """
-    for ds in datasets:
-        ds.load()
-        try:
-            yield ds
-        finally:
-            ds._unload()
-
 def setup_figure(title=None, xlim=None, ylim=None, plotstr=None):
     plt.figure()
     ax = plt.axes(projection=ccrs.PlateCarree())
@@ -210,7 +197,7 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
 
     return(fig, ax)
 
-def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommeta=True, plotBTD3=False):
+def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommeta=True, plotBTD3=False, custombounds=None):
 
     df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
     if plotBTD3:
@@ -294,17 +281,24 @@ def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommet
         return (ax_msg, ax_mtg)
 
     else:
-        if boundsfrommeta:
-            xlim = (dataset.lon_range[0], dataset.lon_range[1])
-            ylim = (dataset.lat_range[0], dataset.lat_range[1])
+        if custombounds:
+            try:
+                xlim=custombounds[0]
+                ylim=custombounds[1]
+            except:
+                return ValueError(f"Custom bounds incorrect format. Expected list or tuple with two two-element elements. Got {str(custombounds)}.")
         else:
-            londiff = abs(dataset.lonmax_mtg - dataset.lonmin_mtg)
-            latdiff = abs(dataset.latmax_mtg - dataset.latmin_mtg)
-            multiplier = 1.5
-            if dataset.n_msg + dataset.n_mtg < 100:
-                multiplier = 5.0
-            xlim = (dataset.lonmin_mtg - londiff*multiplier, dataset.lonmax_mtg + londiff*multiplier)
-            ylim = (dataset.latmin_mtg - latdiff*multiplier, dataset.latmax_mtg + latdiff*multiplier)
+            if boundsfrommeta:
+                xlim = (dataset.lon_range[0], dataset.lon_range[1])
+                ylim = (dataset.lat_range[0], dataset.lat_range[1])
+            else:
+                londiff = abs(dataset.lonmax_mtg - dataset.lonmin_mtg)
+                latdiff = abs(dataset.latmax_mtg - dataset.latmin_mtg)
+                multiplier = 1.5
+                if dataset.n_msg + dataset.n_mtg < 100:
+                    multiplier = 5.0
+                xlim = (dataset.lonmin_mtg - londiff*multiplier, dataset.lonmax_mtg + londiff*multiplier)
+                ylim = (dataset.latmin_mtg - latdiff*multiplier, dataset.latmax_mtg + latdiff*multiplier)
 
         ax = setup_figure(xlim=xlim, ylim=ylim)
         ax.scatter(dataset.lons_msg, dataset.lats_msg, s=1, alpha=0.5, color='blue')
@@ -313,7 +307,7 @@ def plot_latlon_points_dataset(dataset, plotX=True, plotbox=False, boundsfrommet
         legend_elements = []
         legend_elements.append(Patch(facecolor='blue', edgecolor='blue', label='MSG'))
         legend_elements.append(Patch(facecolor='red', edgecolor='red', label='MTG'))
-        plt.legend(handles=legend_elements, title='Satellite', loc='lower center', ncol=2)
+        plt.legend(handles=legend_elements, title='Satellite', ncol=2)
 
         if plotbox:
             #lat_min, lat_max = 11.96,14.29 #lats_msg.min(), lats_msg.max()

@@ -138,4 +138,16 @@ class Dataset:
         parts = path.stem.split("_")
         return parts[1] if len(parts) > 1 else None
 
+def iter_loaded(datasets):
+    """
+    Generator that yields each Dataset after loading.
+    Automatically unloads the previous dataset when moving to the next
+    (or if the caller raises/breaks).
+    """
+    for ds in datasets:
+        ds.load()
+        try:
+            yield ds
+        finally:
+            ds._unload()
 

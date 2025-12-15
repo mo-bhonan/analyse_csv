@@ -10,7 +10,7 @@ import retrieval
 import gc
 import nn
 import plot_utils
-from dataset import Dataset
+from dataset import Dataset, iter_loaded
 from collections import Counter
 import io
 import copy
@@ -25,7 +25,7 @@ class Plotter:
         self.datasets = [Dataset(self.indir, row.to_dict()) for _, row in df.iterrows()]
 
     def plot_nearestneighbors(self, recreate_csv, plot_histograms=True):
-        for dataset in plot_utils.iter_loaded(self.datasets):
+        for dataset in iter_loaded(self.datasets):
             # df_msg, df_mtg will go out of scope at the end of each iteration, so there won't be a memory leak.
             # They point to the same dataframe as dataset.data_msg and dataset.data_mtg
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
@@ -180,7 +180,7 @@ class Plotter:
                 plt.close()
 
     def make_btd_plots(self):
-        for dataset in plot_utils.iter_loaded(self.datasets):
+        for dataset in iter_loaded(self.datasets):
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
             meta = dataset.metadata
             cutstr = config.getcutstr(meta.get('conf_cut'))
@@ -240,7 +240,7 @@ class Plotter:
 
     def plot_beta_masks(self, plotproxies=True, plotlatlon=True):
 
-        for dataset in plot_utils.iter_loaded(self.datasets):
+        for dataset in iter_loaded(self.datasets):
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
             meta = dataset.metadata
             cutstr = config.getcutstr(meta.get('conf_cut'))
@@ -274,6 +274,12 @@ class Plotter:
                 # Create a shallow-copy of dataset and set new references to modified dataframes
                 dataset_det = copy.copy(dataset)
                 dataset_det.load(df_msg=df_msg_det, df_mtg=df_mtg_det)
+                if plotlatlon:
+                    plot_utils.plot_latlon_points_dataset(dataset_det, custombounds=((40.,44.),(13.,15.)))
+                    outname = f"latlon_det_all_msg{meta['time_msg']}_mtg{meta['time_mtg']}"
+                    plot_utils.save_plots(self.outdir, outname)
+                    plt.show()
+                    plt.close()
 
                 # Set lt to False to perform the search for nearest neighbours ABOVE the threshold distance
                 # and get the MSG matches corresponding to points which have a far away MTG point (proxy for SO2 cloud)
@@ -300,24 +306,30 @@ class Plotter:
                     if plotlatlon:
                         dataset_so2.load(df_msg=df_msg_matches, df_mtg=df_mtg_matches)
                         plot_utils.plot_latlon_points_dataset(dataset_so2, boundsfrommeta=False)
+                        outname = f"latlon_det_so2_msg{meta['time_msg']}_mtg{meta['time_mtg']}"
+                        plot_utils.save_plots(self.outdir, outname)
                         plt.show()
                         plt.close()
 
                     londiff = abs(dataset_det.lonmax_mtg - dataset_det.lonmin_mtg)
                     latdiff = abs(dataset_det.latmax_mtg - dataset_det.latmin_mtg)
 
+                    df_mtg_filt = df_mtg_det[((df_mtg_det['Lat'] > config.ashbounds[0][0]) & (df_mtg_det['Lat'] < config.ashbounds[0][1])) &
+                                            ((df_mtg_det['Lon'] > config.ashbounds[1][0]) & (df_mtg_det['Lon'] < config.ashbounds[1][1]))]
                     # Filter MSG to a window around the MTG ash cloud to make computation faster
-                    df_msg_filt = df_msg[((df_msg['Lat'] > dataset_det.latmin_mtg - 0.1*latdiff) & (df_msg['Lat'] < dataset_det.latmax_mtg + 0.1*latdiff))&
-                                           ((df_msg['Lon'] > dataset_det.lonmin_mtg - 0.1*londiff) & (df_msg['Lon'] < dataset_det.lonmax_mtg + 0.1*latdiff))]
+                    df_msg_filt = df_msg[((df_msg['Lat'] > config.ashbounds[0][0] - 0.1*latdiff) & (df_msg['Lat'] < config.ashbounds[0][1] + 0.1*latdiff))&
+                                        ((df_msg['Lon'] > config.ashbounds[1][0] - 0.1*londiff) & (df_msg['Lon'] < config.ashbounds[1][1] + 0.1*latdiff))]
                     dataset_ash = copy.copy(dataset)
-                    dataset_ash.load(df_msg = df_msg_filt, df_mtg=df_mtg_det)
+                    dataset_ash.load(df_msg = df_msg_filt, df_mtg=df_mtg_filt)
                     
                     msg_matches = nn.find_nn(dataset_ash)
                     df_msg_matches = pd.DataFrame(msg_matches).reset_index(drop=True)
                     dfs.append((df_mtg_det, df_msg_matches, "Ash_Proxy"))
                     if plotlatlon:
-                        dataset_ash.load(df_msg=df_msg_matches, df_mtg=df_mtg_det)
+                        dataset_ash.load(df_msg=df_msg_matches, df_mtg=df_mtg_filt)
                         plot_utils.plot_latlon_points_dataset(dataset_ash, boundsfrommeta=False)
+                        outname = f"latlon_det_ash_msg{meta['time_msg']}_mtg{meta['time_mtg']}"
+                        plot_utils.save_plots(self.outdir, outname)
                         plt.show()
                         plt.close()
                 else:

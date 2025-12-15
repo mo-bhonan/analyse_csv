@@ -1,5 +1,12 @@
 import operator as op
 
+SO2_cloud_latmin = 13.
+SO2_cloud_latmax = 14.
+SO2_cloud_lonmin = 40.
+SO2_cloud_lonmax = 45.
+
+ashbounds = ((13.,15.),(40.,44.))
+
 def getcutstr(conf_cut):
     '''
     Examples: 
@@ -57,15 +64,9 @@ def getbmthresholds(name):
 
     return (aa, bb, c)
 
-# ...existing code...
 OP_MAP = {'==': op.eq, '!=': op.ne, '>': op.gt, '<': op.lt, '>=': op.ge, '<=': op.le}
 OP_MAP_STR = {'==':'eq','!=':'ne','>':'gt','<':'lt','>=':'ge','<=':'le'}
 VAR_MAP = {'medva': 'Median_VA_Confidence'}
-
-SO2_cloud_latmin = 13.
-SO2_cloud_latmax = 14.
-SO2_cloud_lonmin = 40.
-SO2_cloud_lonmax = 45.
 
 codes_to_ignore = ["noret"]
 RETRIEVAL_CODE_LABELS = {
