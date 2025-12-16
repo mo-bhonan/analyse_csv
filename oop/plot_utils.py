@@ -38,37 +38,29 @@ def save_plots(outdir, outname, savesvgpdf=False):
 
 def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=False, plotc3=False, plotc1=False, plotBTD3thresh=False, savehist=True, outdir='/home/users/benjamin.honan/Work/analyse_csv/plots/', outname="btdhist.png", latlonstr="", regionstr="", timestr="", conf_cut=""):
 
-    if len(btds) > 1 and len(btds[0]) > 1:
-        plot_msg_mtg = True 
-    else:
-        plot_msg_mtg = False
-
     xmin = np.concatenate(btds).min() if xmin == 0 else xmin
     xmax = np.concatenate(btds).max() if xmax == 0 else xmax
 
-    colors = 'skyblue'
-    labels = ''
-    if plot_msg_mtg:
-        colors = ('orange','skyblue')
-        labels = ('MTG','MSG')
-        #mtg first
-        mtg_perc_below_c4 = msg_perc_below_c4 = mtg_perc_below_btd3 = msg_perc_below_btd3 = 0.
-        if plotc4:
-            mtg_perc_below_c4 = (sum(1 for btd in btds[0] if btd < -0.29)/len(btds[0])) * 100
-            msg_perc_below_c4 = (sum(1 for btd in btds[1] if btd < -0.5)/len(btds[1])) * 100
-        elif plotc3:
-            mtg_perc_below_c3 = (sum(1 for btd in btds[0] if btd < -0.88)/len(btds[0])) * 100
-            msg_perc_below_c3 = (sum(1 for btd in btds[1] if btd < -1.0)/len(btds[1])) * 100
-            mtg_perc_above_c3 = 100. - mtg_perc_below_c3
-            msg_perc_above_c3 = 100. - msg_perc_below_c3
-            mtg_perc_below_btd_cutoff = (sum(1 for btd in btds[0] if btd < -0.1)/len(btds[0])) * 100
-            msg_perc_below_btd_cutoff = (sum(1 for btd in btds[1] if btd < -0.1)/len(btds[1])) * 100
-        elif plotc1:
-            mtg_perc_below_c1 = (sum(1 for btd in btds[0] if btd < -2.06)/len(btds[0])) * 100
-            msg_perc_below_c1 = (sum(1 for btd in btds[1] if btd < -2.00)/len(btds[1])) * 100
-        if plotBTD3thresh:
-            mtg_perc_above_btd3 = (sum(1 for btd in btds[0] if btd > 1.5)/len(btds[0])) * 100
-            msg_perc_above_btd3 = (sum(1 for btd in btds[1] if btd > 1.5)/len(btds[1])) * 100
+    colors = ('orange','skyblue')
+    labels = ('MTG','MSG')
+    #mtg first
+    mtg_perc_below_c4 = msg_perc_below_c4 = mtg_perc_below_btd3 = msg_perc_below_btd3 = 0.
+    if plotc4:
+        mtg_perc_below_c4 = (sum(1 for btd in btds[0] if btd < -0.29)/len(btds[0])) * 100
+        msg_perc_below_c4 = (sum(1 for btd in btds[1] if btd < -0.5)/len(btds[1])) * 100
+    elif plotc3:
+        mtg_perc_below_c3 = (sum(1 for btd in btds[0] if btd < -0.88)/len(btds[0])) * 100
+        msg_perc_below_c3 = (sum(1 for btd in btds[1] if btd < -1.0)/len(btds[1])) * 100
+        mtg_perc_above_c3 = 100. - mtg_perc_below_c3
+        msg_perc_above_c3 = 100. - msg_perc_below_c3
+        mtg_perc_below_btd_cutoff = (sum(1 for btd in btds[0] if btd < -0.1)/len(btds[0])) * 100
+        msg_perc_below_btd_cutoff = (sum(1 for btd in btds[1] if btd < -0.1)/len(btds[1])) * 100
+    elif plotc1:
+        mtg_perc_below_c1 = (sum(1 for btd in btds[0] if btd < -2.06)/len(btds[0])) * 100
+        msg_perc_below_c1 = (sum(1 for btd in btds[1] if btd < -2.00)/len(btds[1])) * 100
+    if plotBTD3thresh:
+        mtg_perc_above_btd3 = (sum(1 for btd in btds[0] if btd > 1.5)/len(btds[0])) * 100
+        msg_perc_above_btd3 = (sum(1 for btd in btds[1] if btd > 1.5)/len(btds[1])) * 100
 
     #plt.figure()
     fig, ax = plt.subplots(figsize=(7, 4))
@@ -102,6 +94,7 @@ def plot_btd_hist(btds, xlabel, ylabel, title, xmin=0, xmax=0, nbins=50, plotc4=
         plt.text(-1.80, ylim[1]*0.65, 'C1 MSG', color='purple', rotation=90, va='top', ha='right', backgroundcolor='white')
         plt.axvline(-2.06, color='green', linestyle='--')
         plt.text(-2.12, ylim[1]*0.65, 'C1 MTG', color='green', rotation=90, va='top', ha='right', backgroundcolor='white')
+        import pdb; pdb.set_trace()
         textstrmtg = f"MTG % below C1: {mtg_perc_below_c1:.1f}%"
         textstrmsg = f"MSG % below C1: {msg_perc_below_c1:.1f}%"
         plt.text(
@@ -330,3 +323,18 @@ def plot_btd3(dataset, plotmsg=True):
 
     return ax
 
+def calcbelowbeta(xvals, yvals, aa, bb, c):
+    # Calculate percentage below conservative and liberal lines
+    # For each point, check if y < y_conservative(x) or y < y_liberal(x)
+    def poly_conservative(xv):
+        return aa * xv**2 + bb * xv + c - 0.4
+    def poly_liberal(xv):
+        return aa * xv**2 + bb * xv + c
+
+    below_conservative = np.sum(yvals < poly_conservative(xvals))
+    below_liberal = np.sum(yvals < poly_liberal(xvals))
+    total_points = len(xvals)
+    perc_below_conservative = (below_conservative / total_points) * 100 if total_points > 0 else 0
+    perc_below_liberal = (below_liberal / total_points) * 100 if total_points > 0 else 0
+
+    return (perc_below_conservative, perc_below_liberal)

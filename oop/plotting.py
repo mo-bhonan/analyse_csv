@@ -238,7 +238,7 @@ class Plotter:
                 plt.show()
             plt.close()
 
-    def plot_beta_masks(self, plotproxies=True, plotlatlon=True):
+    def plot_beta_masks(self, plotproxies=False, plotlatlon=True, derivemtgc=True):
 
         for dataset in iter_loaded(self.datasets):
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
@@ -352,6 +352,9 @@ class Plotter:
 
                 mtg_beta_870_108, msg_beta_870_108 = df_mtg['Beta_870_108'], df_msg['Beta_870_108']
                 mtg_beta_120_108, msg_beta_120_108 = df_mtg['Beta_120_108'], df_msg['Beta_120_108']
+                
+                below_con_msg = 0.
+                cnew_mtg = 3.0
                 for mode in ["msg", "mtg"]:
 
                     # Create plot
@@ -387,19 +390,30 @@ class Plotter:
                     X, Y = np.meshgrid(xedges, yedges)
                     pcm = plt.pcolormesh(X, Y, H.T, cmap='gist_heat_r', shading='auto')
 
-                    # Calculate percentage below conservative and liberal lines
-                    # For each point, check if y < y_conservative(x) or y < y_liberal(x)
-                    def poly_conservative(xv):
-                        return aa * xv**2 + bb * xv + c - 0.4
-                    def poly_liberal(xv):
-                        return aa * xv**2 + bb * xv + c
+                    perc_below_conservative, perc_below_liberal = plot_utils.calcbelowbeta(xvals, yvals, aa, bb, c)
+                    ymult=0.15 # Position multiplier for text box
+                    if derivemtgc:
+                        if mode == "msg":
+                            below_con_msg = perc_below_conservative
+                        if mode == "mtg":
+                            ymult += 0.05
+                            def iterate_c(cstep):
+                                for cnew in np.linspace(0,3,cstep):
+                                    _perc_below_conservative, _ = plot_utils.calcbelowbeta(xvals, yvals, aa, bb, cnew)
+                                    if round(_perc_below_conservative,1) == round(below_con_msg,1):
+                                        break
+                                return cnew
+                            cstep=31
+                            while cnew_mtg == 3.:
+                                cnew_mtg = iterate_c(cstep)
+                                cstep*=10
+                                print(f"Calculating new beta y-intercept for MTG. cstep: {cstep}")
+                            print(f"New y-intercept for MSG to match MTG: {cnew_mtg:.3f}")
+                            print(f"Required change to c: {cnew_mtg - c:.3f}")
 
-                    below_conservative = np.sum(yvals < poly_conservative(xvals))
-                    below_liberal = np.sum(yvals < poly_liberal(xvals))
-                    total_points = len(xvals)
-                    perc_below_conservative = (below_conservative / total_points) * 100 if total_points > 0 else 0
-                    perc_below_liberal = (below_liberal / total_points) * 100 if total_points > 0 else 0
                     passed_str = f"{perc_below_conservative:.1f}% below con., {perc_below_liberal:.1f}% below lib."
+                    if derivemtgc:
+                        passed_str+=f"\nRequired change to c: {cnew_mtg - c:.3f}"
 
                     # Add colorbar for combined scale
                     plt.colorbar(pcm, label='Count', orientation='vertical')
@@ -407,7 +421,7 @@ class Plotter:
                     plotstr = f"{meta['region']}\n"+f"{dataset.latlonstr_msg}\n"+f"{passed_str}\n"+f"Time MSG: {meta['time_msg']}\n"+f"Time MTG: {meta['time_mtg']}"
                     xlim = plt.gca().get_xlim()
                     ylim = plt.gca().get_ylim()
-                    plt.text(xlim[0] + 0.025*(xlim[1]-xlim[0]), ylim[0]+0.15*(ylim[1]-ylim[0]), plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
+                    plt.text(xlim[0] + 0.025*(xlim[1]-xlim[0]), ylim[0]+ymult*(ylim[1]-ylim[0]), plotstr, ha='left', va='top', fontsize=10, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
 
                     plt.legend()
                     if name == "SO2_Proxy":
@@ -465,11 +479,13 @@ class Plotter:
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
             meta = dataset.metadata
             df_msg = df_msg[(df_msg['BTD2_conf'] <= -1.0) | (df_msg['VolcanicAsh_BTD3'] <= 1.5)]
-            df_msg = df_msg[((df_msg['Lat'] > config.ashbounds[0][0]) & (df_msg['Lat'] < config.ashbounds[0][1])) &
-                                    ((df_msg['Lon'] > config.ashbounds[1][0]) & (df_msg['Lon'] < config.ashbounds[1][1]))]
+            df_msg = df_msg[(df_msg['Lat'] > config.ashbounds[0][0]) & (df_msg['Lat'] < config.ashbounds[0][1]) &
+                                    (df_msg['Lon'] > config.ashbounds[1][0]) & (df_msg['Lon'] < config.ashbounds[1][1])]
             df_mtg = df_mtg[(df_mtg['BTD2_conf'] <= -1.0) | (df_mtg['VolcanicAsh_BTD3'] <= 1.5)]
             df_mtg = df_mtg[((df_mtg['Lat'] > config.ashbounds[0][0]) & (df_mtg['Lat'] < config.ashbounds[0][1])) &
                                     ((df_mtg['Lon'] > config.ashbounds[1][0]) & (df_mtg['Lon'] < config.ashbounds[1][1]))]
+            if df_msg.empty or df_mtg.empty:
+                continue
             dataset.load(df_msg=df_msg, df_mtg=df_mtg)
 
             ax_msg = plot_utils.plot_btd3(dataset, plotmsg=True)
