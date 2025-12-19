@@ -2,7 +2,7 @@ def flags_from_series(series):
     return {
         'conf': series["PreFilter_VA_Confidence"],
         'fail_c1': series["BTD2_conf"] > series["c1"],
-        'fail_c3': series["BTD2_conf"] <= series["c3"],
+        'fail_c3': series["BTD2_conf"] > series["c3"],
         'fail_c4': series["BTD2_conf"] > series["c4"],
         'fail_btd3': series["VolcanicAsh_BTD3"] > series["BTD3thresh"],
         'fail_btdcutoff': series["BTD2_conf"] > -0.1,

@@ -64,8 +64,8 @@ def getbmthresholds(name):
 
     return (aa, bb, c)
 
-OP_MAP = {'==': op.eq, '!=': op.ne, '>': op.gt, '<': op.lt, '>=': op.ge, '<=': op.le}
-OP_MAP_STR = {'==':'eq','!=':'ne','>':'gt','<':'lt','>=':'ge','<=':'le'}
+OP_MAP = {'==': op.eq, '=': op.eq, '!=': op.ne, '>': op.gt, '<': op.lt, '>=': op.ge, '<=': op.le}
+OP_MAP_STR = {'==':'eq','=':'eq','!=':'ne','>':'gt','<':'lt','>=':'ge','<=':'le'}
 VAR_MAP = {'medva': 'Median_VA_Confidence'}
 
 codes_to_ignore = ["noret"]
@@ -97,6 +97,7 @@ RETRIEVAL_CODE_LABELS = {
     "conf7_c1_msgconf1": "MTG Conf 7, MSG Conf 1 fails: C1 Threshold",
     "conf7_other_msgconf1": "MTG Conf 7, MSG Conf 1 fails: Other",
     "conf4_conmask_msgconf1": "MTG Conf 4, MSG Conf 1 fails: Conservative Mask",
+    "conf4_conmask_msgconf2": "MTG Conf 4, MSG Conf 2 fails: Conservative Mask",
     "conf4_c4_msgconf1": "MTG Conf 4, MSG Conf 1 fails: C4 Threshold",
     "conf4_c4_conmask_msgconf1": "MTG Conf 4, MSG Conf 1 fails: C4 & Con Mask",
     "conf4_other_msgconf1": "MTG Conf 4, MSG Conf 1 fails: Other",

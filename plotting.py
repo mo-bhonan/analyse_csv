@@ -16,10 +16,11 @@ import io
 import copy
 
 class Plotter:
-    def __init__(self, indir, outdir, master_csv, show_plots=False):
+    def __init__(self, indir, outdir, master_csv, show_plots=False, plotseparate=False):
         self.indir = Path(indir)
         self.outdir = Path(outdir)
         self.show_plots = show_plots
+        self.plotseparate = plotseparate
 
         df = pd.read_csv(self.indir / Path(master_csv))
         self.datasets = [Dataset(self.indir, row.to_dict()) for _, row in df.iterrows()]
@@ -43,15 +44,16 @@ class Plotter:
 
                 # Apply cut
                 if cutstr:
-                    sat, variable, operator, values = config.splitcutstr(cutstr)
+                    sat, variable, operator, value = config.splitcutstr(cutstr)
                     constraints = {"variables" : [variable], "operators" : [operator], "values": [float(value)]}
                     if sat.lower() == "msg":
                         df_msg = filters.apply_constraints(df_msg, constraints)
                     else:
                         df_mtg = filters.apply_constraints(df_mtg, constraints)
-                        
+                    dataset.load(df_msg=df_msg, df_mtg=df_mtg)
+
                 search_matches = nn.find_nn(dataset, threshold=0.01)
-                for msg_match, mtg_match in search_matches:
+                for mtg_match, msg_match in search_matches:
                     msg_matches.append(msg_match)
                     mtg_matches.append(mtg_match)
                     flags_msg = retrieval.flags_from_series(msg_match)
@@ -391,19 +393,19 @@ class Plotter:
                     pcm = plt.pcolormesh(X, Y, H.T, cmap='gist_heat_r', shading='auto')
 
                     perc_below_conservative, perc_below_liberal = plot_utils.calcbelowbeta(xvals, yvals, aa, bb, c)
-                    ymult=0.15 # Position multiplier for text box
+                    ymult=0.175 # Position multiplier for text box
                     if derivemtgc:
                         if mode == "msg":
                             below_con_msg = perc_below_conservative
                         if mode == "mtg":
-                            ymult += 0.05
+                            ymult += 0.04
                             def iterate_c(cstep):
-                                for cnew in np.linspace(0,3,cstep):
+                                for cnew in np.linspace(0,3,cstep+1):
                                     _perc_below_conservative, _ = plot_utils.calcbelowbeta(xvals, yvals, aa, bb, cnew)
                                     if round(_perc_below_conservative,1) == round(below_con_msg,1):
                                         break
                                 return cnew
-                            cstep=31
+                            cstep=30
                             while cnew_mtg == 3.:
                                 cnew_mtg = iterate_c(cstep)
                                 cstep*=10
@@ -412,7 +414,7 @@ class Plotter:
                             print(f"Required change to c: {cnew_mtg - c:.3f}")
 
                     passed_str = f"{perc_below_conservative:.1f}% below con., {perc_below_liberal:.1f}% below lib."
-                    if derivemtgc:
+                    if derivemtgc and mode == "mtg":
                         passed_str+=f"\nRequired change to c: {cnew_mtg - c:.3f}"
 
                     # Add colorbar for combined scale
@@ -463,40 +465,61 @@ class Plotter:
                 plotstr = f"Plot Region: {meta['region']}\n"+f"Percentage Passed: {passed_str}\n"+f"MSG Time: {meta['time_msg']}\n"+f"MTG Time: {meta['time_mtg']}"
                 title = f'Pixels passing {constr_str_title}'
 
-                plot_utils.plot_latlon_points_dataset(dataset_constr, title=title, plotstr=plotstr)
-                xlim = plt.gca().get_xlim()
-                ylim = plt.gca().get_ylim()
-                plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - 0.025*(ylim[1]-ylim[0]), plotstr, color='black', va='top', ha='left', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
-                outname = f"grid_{constr_str_file}_{meta['region'].replace(" ","_")}_msg{meta['time_msg']}_mtg{meta['time_mtg']}.png"
-                plot_utils.save_plots(self.outdir, outname)
-                if self.show_plots:
-                    plt.show()
-                plt.close()
+                if self.plotseparate:
+                    plot_utils.plot_latlon_points_dataset(dataset_constr, title=title, plotstr=plotstr, onlymsg=True)
+                    xlim = plt.gca().get_xlim()
+                    ylim = plt.gca().get_ylim()
+                    plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - 0.025*(ylim[1]-ylim[0]), plotstr, color='black', va='top', ha='left', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
+                    outname = f"grid_msg_{constr_str_file}_{meta['region'].replace(" ","_")}_msg{meta['time_msg']}_mtg{meta['time_mtg']}.png"
+                    plot_utils.save_plots(self.outdir, outname)
+                    if self.show_plots:
+                        plt.show()
+                    plt.close()
 
-    def plot_btd3(self):
+                    plot_utils.plot_latlon_points_dataset(dataset_constr, title=title, plotstr=plotstr, onlymtg=True)
+                    xlim = plt.gca().get_xlim()
+                    ylim = plt.gca().get_ylim()
+                    plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - 0.025*(ylim[1]-ylim[0]), plotstr, color='black', va='top', ha='left', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
+                    outname = f"grid_mtg_{constr_str_file}_{meta['region'].replace(" ","_")}_msg{meta['time_msg']}_mtg{meta['time_mtg']}.png"
+                    plot_utils.save_plots(self.outdir, outname)
+                    if self.show_plots:
+                        plt.show()
+                    plt.close()
+                else:
+                    plot_utils.plot_latlon_points_dataset(dataset_constr, title=title, plotstr=plotstr)
+                    xlim = plt.gca().get_xlim()
+                    ylim = plt.gca().get_ylim()
+                    plt.text(xlim[0] + 0.02*(xlim[1]-xlim[0]), ylim[1] - 0.025*(ylim[1]-ylim[0]), plotstr, color='black', va='top', ha='left', fontsize=10, bbox=dict(facecolor='white', alpha=0.85, edgecolor='none'))
+                    outname = f"grid_{constr_str_file}_{meta['region'].replace(" ","_")}_msg{meta['time_msg']}_mtg{meta['time_mtg']}.png"
+                    plot_utils.save_plots(self.outdir, outname)
+                    if self.show_plots:
+                        plt.show()
+                    plt.close()
+
+    def plot_var(self, var="VolcanicAsh_BTD3"):
 
         for dataset in iter_loaded(self.datasets):
             df_msg, df_mtg = dataset.data_msg, dataset.data_mtg
             meta = dataset.metadata
-            df_msg = df_msg[(df_msg['BTD2_conf'] <= -1.0) | (df_msg['VolcanicAsh_BTD3'] <= 1.5)]
-            df_msg = df_msg[(df_msg['Lat'] > config.ashbounds[0][0]) & (df_msg['Lat'] < config.ashbounds[0][1]) &
-                                    (df_msg['Lon'] > config.ashbounds[1][0]) & (df_msg['Lon'] < config.ashbounds[1][1])]
-            df_mtg = df_mtg[(df_mtg['BTD2_conf'] <= -1.0) | (df_mtg['VolcanicAsh_BTD3'] <= 1.5)]
-            df_mtg = df_mtg[((df_mtg['Lat'] > config.ashbounds[0][0]) & (df_mtg['Lat'] < config.ashbounds[0][1])) &
-                                    ((df_mtg['Lon'] > config.ashbounds[1][0]) & (df_mtg['Lon'] < config.ashbounds[1][1]))]
+            #df_msg = df_msg[(df_msg['BTD2_conf'] <= -1.0) | (df_msg['VolcanicAsh_BTD3'] <= 1.5)]
+            #df_msg = df_msg[(df_msg['Lat'] > config.ashbounds[0][0]) & (df_msg['Lat'] < config.ashbounds[0][1]) &
+            #                        (df_msg['Lon'] > config.ashbounds[1][0]) & (df_msg['Lon'] < config.ashbounds[1][1])]
+            #df_mtg = df_mtg[(df_mtg['BTD2_conf'] <= -1.0) | (df_mtg['VolcanicAsh_BTD3'] <= 1.5)]
+            #df_mtg = df_mtg[((df_mtg['Lat'] > config.ashbounds[0][0]) & (df_mtg['Lat'] < config.ashbounds[0][1])) &
+            #                        ((df_mtg['Lon'] > config.ashbounds[1][0]) & (df_mtg['Lon'] < config.ashbounds[1][1]))]
             if df_msg.empty or df_mtg.empty:
                 continue
             dataset.load(df_msg=df_msg, df_mtg=df_mtg)
 
-            ax_msg = plot_utils.plot_btd3(dataset, plotmsg=True)
-            outname_msg = f"MSG_BTD3_map_{meta['time_msg']}"
+            ax_msg = plot_utils.plot_var(dataset, plotmsg=True, var=var)
+            outname_msg = f"MSG_{var}_map_{meta['time_msg']}"
             plot_utils.save_plots(self.outdir, outname_msg)
             if self.show_plots:
                 plt.show()
                 plt.close()
 
-            ax_mtg = plot_utils.plot_btd3(dataset, plotmsg=False)
-            outname_mtg = f"MTG_BTD3_map_{meta['time_mtg']}"
+            ax_mtg = plot_utils.plot_var(dataset, plotmsg=False, var=var)
+            outname_mtg = f"MTG_{var}_map_{meta['time_mtg']}"
             plot_utils.save_plots(self.outdir, outname_mtg)
             if self.show_plots:
                 plt.show()

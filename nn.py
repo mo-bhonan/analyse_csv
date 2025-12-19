@@ -51,4 +51,5 @@ def find_nn(dataset, threshold = 0., lt=True):
         for iind, index in enumerate(nearest_ind):
             search_matches.append(df_tree.iloc[index])
 
+    # MTG first, MSG, second
     return search_matches
